@@ -3,12 +3,12 @@
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "lib": ["ES2020"],
+    "types": ["node"],
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
-    "types": ["node"]
+    "baseUrl": "."
   },
-  "include": ["src", "api"]
+  "include": ["src"]
 }

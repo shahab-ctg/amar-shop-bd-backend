@@ -6,7 +6,7 @@ import {env} from "../env.js"
 let conn: typeof mongoose | null = null;
 let connecting: Promise <typeof mongoose> | null = null;
 
-export async function dbconnect(): Promise<typeof mongoose> {
+export async function dbConnect(): Promise<typeof mongoose> {
   if(conn) return conn;
 
   if(!env.MONGODB_URI){
@@ -14,7 +14,7 @@ export async function dbconnect(): Promise<typeof mongoose> {
 
 if(!connecting){
   connecting = mongoose.connect(env.MONGODB_URI, {
-    dbName: env.MONGO_DB || "shodaigram"
+    dbName: env.MONGODB_DB || "shodaigram"
   }).then((m) => {
     conn = m;
     return m;

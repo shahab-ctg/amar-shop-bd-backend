@@ -1,7 +1,9 @@
 
 import express from "express";
+import { env } from "./env.js";
+import app from "./app.js";
 
-const app = express();
+
 
 app.use(express.json());
 
@@ -9,7 +11,7 @@ app.use(express.json());
 //   res.json({ok: true, service: "Shodaigram-bakcend", ts: new Date().toISOString()})
 // })
 
-const PORT = Number(process.env.PORT || 3001)
+const PORT = Number(env.PORT || 3001)
 
 app.listen(PORT, () => {
   console.log(`server is running at http://localhost:${PORT}`);})

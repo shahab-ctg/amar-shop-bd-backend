@@ -10,6 +10,10 @@ export function errorMiddleware(err: any, _req: Request, res: Response, _next: N
   }
 
   if(err?.name === "MongoServerError" && err.code === 11000){
-    return res.status(409).json({ok: false, code: err.code || "INTERNAL_ERROR", message: err.message || "Something went wrong"})
+    return res.status(409).json({ok: true, code: "DUPLICATE_KEY", details: err.keyValue })
+
   }
-}
+
+  const status = err.statusCode || 500;
+    return res.status(status).json({ok: false, code: err.code || "INTERNAL_ERROR", message: err.message || "Something went wrong"})
+  }
