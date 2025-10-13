@@ -5,6 +5,9 @@ import morgan from "morgan"
 import products from "./routes/v1/product.routes.js"
 import orders from "./routes/v1/order.routes.js";
 import health from "./routes/v1/health.routes.js";
+import categories from "./routes/v1/category.routes.js";
+import adminProducts from "./routes/v1/admin.product.routes.js";
+import adminCategories from "./routes/v1/admin.category.routes.js";
 
 import rateLimit from "express-rate-limit"
 import { env } from './env.js';
@@ -25,8 +28,11 @@ app.use(express.json({limit: "1mb"}))
 
 // Routes===========
 app.use("/api/v1", health);
+app.use("/api/v1", categories);
 app.use("/api/v1", products)
 app.use("/api/v1", orders)
+app.use("/api/v1", adminProducts)
+app.use("/api/v1", adminCategories)
 
 app.use(errorMiddleware)
 

@@ -1,0 +1,25 @@
+import { NextFunction, Request, Response } from "express";
+import { verifyAccessToken } from "src/utils/jwt.js";
+
+
+
+
+export function requireAdmin (req: Request, res: Response, next: NextFunction) {
+  const hdr = req.header("Authorization") || "";
+  const token = hdr.startsWith("Bearer") ? hdr.slice(7) : null;
+
+  if(!token) return res.status(401).json({ok: false, code: "UNAUTHORIZED"});
+
+  try {
+    const payload = verifyAccessToken(token);
+    if(payload.role !== "ADMIN"){
+      return res.status(403).json({ok: false, code: "FORBIDDEN"})
+    }
+
+    req.user = payload;
+    next();
+  } catch (error) {
+    return res.status(401).json({ok: false, code: "UNAUTHORIZED"})
+    
+  }
+}

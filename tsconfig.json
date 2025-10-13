@@ -6,6 +6,7 @@
     "lib": ["ES2020"],
     "types": ["node"],
     "strict": true,
+    "noImplicitAny": true,
     "skipLibCheck": true,
     "outDir": "dist",
     "baseUrl": "."
