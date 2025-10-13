@@ -1,7 +1,23 @@
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
-const ProductSchema = new Schema(
+export interface ProductDoc extends mongoose.Document {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  slug: string;
+  image?: string;
+  price: number;
+  compareAtPrice?: number;
+  isDiscounted?: boolean;
+  stock?: number;
+  categorySlug?: string;
+  tagSlugs?: string[];
+  status: "ACTIVE" | "DRAFT" | "HIDDEN";
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+const ProductSchema = new Schema<ProductDoc>(
   {
     title: { type: String, required: true, index: true },
     slug: { type: String, required: true, unique: true },
@@ -24,4 +40,6 @@ const ProductSchema = new Schema(
 
 ProductSchema.index({ createdAt: -1 });
 
-export const Product = models.Product || model("Product", ProductSchema);
+export const Product =
+  (models.Product as mongoose.Model<ProductDoc>) ||
+  model<ProductDoc>("Product", ProductSchema);

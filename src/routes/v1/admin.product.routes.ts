@@ -1,114 +1,106 @@
-import { NextFunction, Router, Request, Response } from "express";
-import { Types } from "mongoose";
-import { resolve } from "path";
-import { dbConnect } from "src/db/connection.js";
-import { requireAdmin } from "src/middlewares/auth.js";
-import { Product } from "src/models/Product.js";
-import z from "zod";
-
-
-
-
+import { Router } from "express";
+import mongoose from "mongoose";
+import { z } from "zod";
+import { dbConnect } from "../../db/connection.js";
+import { requireAdmin } from "../../middlewares/auth.js";
+import { Product, type ProductDoc } from "../../models/Product.js";
 
 const router = Router();
+const { Types } = mongoose;
 
 const AdminCreateProductDTO = z.object({
   title: z.string().min(2),
   slug: z.string().min(2),
   price: z.number().nonnegative(),
-  stock: z.number().nonnegative().default(0),
+  stock: z.number().int().nonnegative().default(0),
   image: z.string().optional(),
   compareAtPrice: z.number().nonnegative().optional(),
   isDiscounted: z.boolean().optional().default(false),
   status: z.enum(["ACTIVE", "DRAFT", "HIDDEN"]).optional().default("ACTIVE"),
   categorySlug: z.string().optional(),
-  tagSlugs: z.array(z.string()).optional().default([])
-})
+  tagSlugs: z.array(z.string()).optional().default([]),
+});
 
-// To do===Admin Auth
+const AdminUpdateProductDTO = AdminCreateProductDTO.partial().refine(
+  (d) => Object.keys(d).length > 0,
+  { message: "At least one field required" }
+);
 
-// POST /api/v1/admin/products
-router.post("/admin/products", adminAuth, async ( req: Request, res: Response, next: NextFunction) => {
+const IdParam = z.object({
+  id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
+});
+
+router.post("/admin/products", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
-    const body = AdminCreateProductDTO.parse(req.body)
-
-    const created = await Product.create({
-      title: body.title,
-      slug: body.slug,
-      price: body.price,
-      stock: body.stock,
-      image: body.image,
-      compareAtPrice: body.compareAtPrice,
-      isDiscounted: body.isDiscounted,
-      status: body.status,
-      categorySlug: body.categorySlug,
-      tagSlugs: body.tagSlugs
-    })
-
-    return res.status(201).json({
-      ok: true,
-      data: {id: created._id.toString(), slug: created.slug}
-    })
-    
-  } catch (err) {
-    if(err?.name === "MongoServerError" && err.code === 11000){
-      return res.status(409).json({ok: false, code: "DUPLICATE_KEY", details: err.keyValue})
+    const body = AdminCreateProductDTO.parse(req.body);
+    const created: ProductDoc = await Product.create(body);
+    return res
+      .status(201)
+      .json({
+        ok: true,
+        data: { id: created._id.toString(), slug: created.slug },
+      });
+  } catch (err: unknown) {
+   
+    const e = err as {
+      name?: string;
+      code?: number;
+      keyValue?: Record<string, unknown>;
+    };
+    if (e?.name === "MongoServerError" && e.code === 11000) {
+      return res
+        .status(409)
+        .json({ ok: false, code: "DUPLICATE_KEY", details: e.keyValue });
     }
-    next(err) 
+    next(err);
   }
 });
 
+type LeanProduct = {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  slug: string;
+  image?: string;
+  price: number;
+  compareAtPrice?: number;
+  isDiscounted?: boolean;
+  stock?: number;
+  categorySlug?: string;
+  tagSlugs?: string[];
+  status: "ACTIVE" | "DRAFT" | "HIDDEN";
+};
 
-// update===PATCH /api/v1/admin/products/:id
-
-const IdParam = z.object({
-  id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId")
-})
-
-const AdminUpdateProductDTO = AdminCreateProductDTO.partial()
-.refine((d) => Object.keys(d).length > 0, { message: "At least one field required"});
-
-
-router.patch("/admin/products/:id", requireAdmin, async ( req, res, next) => {
+router.patch("/admin/products/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
-    const {id} = IdParam .parse(req.params);
+    const { id } = IdParam.parse(req.params);
     const body = AdminUpdateProductDTO.parse(req.body);
-
-    const updated = await Product.findByIdAndUpdate(id,
+    const updated = await Product.findByIdAndUpdate(
+      id,
       { $set: body },
-      { new: true, runValidators: true}).lean();
-
-      if(!updated) return res.status(404).json({ok: false, code: "NOT_FOUND"});
-
-      res.json({ok: true, data: {...updated, _id: updated._id.toString()}})
+      { new: true, runValidators: true }
+    ).lean<LeanProduct | null>();
+    if (!updated) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
+    return res.json({
+      ok: true,
+      data: { ...updated, _id: updated._id.toString() },
+    });
   } catch (err) {
-    if(err?.name === "MongoServerError" && err.code === 11000) {
-      return res.status(409).json({ok: false, code: "DUPLICATE_KEY", details: err.keyValue })
-    } 
-    next()
+    next(err);
   }
-})
+});
 
-
-//  DELETE /api/v1/admin/products/:id======
-
-router.delete("/admin/products/:id", requireAdmin, async ( req, res, next) => {
+router.delete("/admin/products/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
-    const {id} = IdParam.parse(req.params);
-
-    const out = await Product.findByIdAndDelete(id).lean();
-    if(!out) return res.status(404).json({ok: false, code: "NOT_FOUND"})
-
-      res.json({ok: true, data: {id}});
-    
-    
+    const { id } = IdParam.parse(req.params);
+    const out = await Product.findByIdAndDelete(id).lean<LeanProduct | null>();
+    if (!out) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
+    return res.json({ ok: true, data: { id } });
   } catch (err) {
-    next(err)
-    
+    next(err);
   }
-})
+});
 
-export default router
+export default router;

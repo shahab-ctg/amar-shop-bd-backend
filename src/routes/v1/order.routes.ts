@@ -1,12 +1,43 @@
 import { Router, Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
+import { z } from "zod";
 import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
-import { z } from "zod";
-import { Types } from "mongoose";
-import { requireAdmin } from "src/middlewares/auth.js";
+import { requireAdmin } from "../../middlewares/auth.js";
 
 const router = Router();
+const { Types } = mongoose;
+
+// আমরা যে ফিল্ডগুলো ব্যবহার করছি সেগুলোর মিনিমাল টাইপ
+type LeanProductForOrder = {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  image?: string;
+  price: number;
+  stock?: number;
+};
+
+type LeanOrder = {
+  _id: mongoose.Types.ObjectId;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    area: string;
+  };
+  lines: {
+    productId: mongoose.Types.ObjectId;
+    title: string;
+    image?: string;
+    price: number;
+    qty: number;
+  }[];
+  totals: { subTotal: number; shipping: number; grandTotal: number };
+  status: "PENDING" | "IN_PROGRESS" | "IN_SHIPPING" | "DELIVERED" | "CANCELLED";
+  createdAt?: Date;
+};
 
 const OrderCreateDTO = z.object({
   customer: z.object({
@@ -26,77 +57,18 @@ const OrderCreateDTO = z.object({
     .min(1),
 });
 
-type TLeanProduct = {
-  _id: Types.ObjectId;
-  title: string;
-  price: number;
-  image?: string;
-  stock?: number;
-  status?: string;
-};
-
-
-// get all orders==========
-router.get("/orders",requireAdmin, async (req, resolve, next) => {
-  try {
-    await dbConnect();
-
-    const q = OrderlistQuery.parse(req.query);
-    const filter: Record<string, unknown> = {};
-    if(q.status) filter["status"] = q.status;
-
-    const items = await Order.find(filter)
-    .sort({createdAt: -1})
-    .skip((q.page - 1) * q.limit)
-    .limit(q.limit)
-    .lean();
-
-    const total =  await Order.countDocuments(filter);
-    res.json({ok: true, data: {
-      items: items.map(o => ({...o, _id: o._id.toString()}),
-    total, page: q.page, limit: q.limit)
-    }});
-    
-  } catch (err) {
-    next(err)
-  }
-})
-
-
-// get order by id========
-router.get("/orders/:id", requireAdmin, async ( req, res, next) => {
-  try {
-    await dbConnect();
-
-    const {id} = IdParam.parse(req.params);
-
-    const order = await Order.findById(id).lean();
-
-    if(!order) return res.status(404).json({ok: false, code: "NOT_FOUND"});
-    res.json({ok: true, data: { ...order, _id: order._id.toString()}})
-    
-  } catch (err) {
-    next(err)
-    
-  }
-})
-
-
-
-// Order create==========
 router.post(
   "/orders",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await dbConnect();
-      const body = OrderCreateDTO.parse(req.body); 
+      const body = OrderCreateDTO.parse(req.body);
+
       const ids = body.lines.map((l) => l.productId);
       const products = await Product.find({
         _id: { $in: ids },
         status: "ACTIVE",
-      })
-        .lean<TLeanProduct[]>()
-        .exec();
+      }).lean<LeanProductForOrder[]>();
 
       if (products.length !== body.lines.length) {
         return res.status(404).json({ ok: false, code: "PRODUCT_MISSING" });
@@ -129,7 +101,7 @@ router.post(
         totals: { subTotal, shipping, grandTotal },
       });
 
-      res.status(201).json({
+      return res.status(201).json({
         ok: true,
         data: {
           id: order._id.toString(),
@@ -137,49 +109,109 @@ router.post(
           status: order.status,
         },
       });
-    } catch (error) {
-      next(error);
+    } catch (e) {
+      next(e);
     }
   }
 );
 
-
-// order patch========
-const OrderUpdateDTO = z.object({
-  status: z.enum(["PENDING", "IN_PROGESS", "IN_SHIPPING", "DELIVERED", "CANCELLED"])
+const OrderListQuery = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  status: z
+    .enum(["PENDING", "IN_PROGRESS", "IN_SHIPPING", "DELIVERED", "CANCELLED"])
+    .optional(),
 });
 
-router.patch("/orders/:id", requireAdmin, async ( req, resolve, next) => {
-
+router.get("/orders", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
+    const q = OrderListQuery.parse(req.query);
+    const filter: Record<string, unknown> = {};
+    if (q.status) filter.status = q.status;
 
-    const {id} = Idparam.parse(req.params);
-    const body = OrderUpdateDTO.parse(req.body);
-    const order = await Order.findByIdAndUpdate(id, {status: body.status}, {new: true}).lean();
-    if(!order) return res.status(404).json({ok: false, code: "NOT_FOUND"});
-    
-  } catch (err) {
-    next(err)
-    
+    const items = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((q.page - 1) * q.limit)
+      .limit(q.limit)
+      .lean<LeanOrder[]>();
+
+    const total = await Order.countDocuments(filter);
+
+    return res.json({
+      ok: true,
+      data: {
+        items: items.map((o) => ({ ...o, _id: o._id.toString() })),
+        total,
+        page: q.page,
+        limit: q.limit,
+      },
+    });
+  } catch (e) {
+    next(e);
   }
-})
+});
 
+const IdParam = z.object({
+  id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
+});
 
-// order delete====
-router.delete("/orders/:id",requireAdmin, async (req, res, next) => {
+router.get("/orders/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
-
-    const {id} = IdParam.parse(req.params);
-    const out = await Order.findById(id).lean();
-    if(!out) return res.status(404).json({ok: false, code: "NOT_FOUND"});
-    res.json({ok: true, data: {id}});
-    
-  } catch (err) {
-    next(err)
-    
+    const { id } = IdParam.parse(req.params);
+    const order = await Order.findById(id).lean<LeanOrder | null>();
+    if (!order) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
+    return res.json({
+      ok: true,
+      data: { ...order, _id: order._id.toString() },
+    });
+  } catch (e) {
+    next(e);
   }
-})
+});
+
+router.patch("/orders/:id", requireAdmin, async (req, res, next) => {
+  try {
+    await dbConnect();
+    const { id } = IdParam.parse(req.params);
+    const body = z
+      .object({
+        status: z.enum([
+          "PENDING",
+          "IN_PROGRESS",
+          "IN_SHIPPING",
+          "DELIVERED",
+          "CANCELLED",
+        ]),
+      })
+      .parse(req.body);
+
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { status: body.status },
+      { new: true }
+    ).lean<LeanOrder | null>();
+    if (!order) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
+    return res.json({
+      ok: true,
+      data: { ...order, _id: order._id.toString() },
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete("/orders/:id", requireAdmin, async (req, res, next) => {
+  try {
+    await dbConnect();
+    const { id } = IdParam.parse(req.params);
+    const out = await Order.findByIdAndDelete(id).lean<LeanOrder | null>();
+    if (!out) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
+    return res.json({ ok: true, data: { id } });
+  } catch (e) {
+    next(e);
+  }
+});
 
 export default router;

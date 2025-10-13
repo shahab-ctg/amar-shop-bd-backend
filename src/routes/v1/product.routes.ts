@@ -4,6 +4,8 @@ import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { z } from "zod";
 import { Types } from "mongoose";
+import { validateQuery } from "src/middlewares/validate.js";
+
 
 const router = Router();
 
@@ -33,10 +35,11 @@ type TLeanProduct = {
 // GET /api/v1/products
 router.get(
   "/products",
+  validateQuery(ProductListQuery),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       await dbConnect();
-      const q = ProductListQuery.parse(req.query);
+      const q = res.locals.query as z.infer<typeof ProductListQuery>;
 
       const filter: any = { status: "ACTIVE" };
       if (q.category) filter.categorySlug = q.category;
@@ -47,7 +50,6 @@ router.get(
       const page = q.page;
       const limit = q.limit;
 
-     
       const items = await Product.find(filter)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
@@ -60,7 +62,7 @@ router.get(
       res.json({
         ok: true,
         data: {
-          items: items.map((p) => ({ ...p, _id: p._id.toString() })), 
+          items: items.map((p) => ({ ...p, _id: p._id.toString() })),
           total,
           page,
           limit,
