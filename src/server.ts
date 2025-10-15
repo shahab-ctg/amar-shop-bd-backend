@@ -11,7 +11,7 @@ app.use(express.json());
 //   res.json({ok: true, service: "Shodaigram-bakcend", ts: new Date().toISOString()})
 // })
 
-const PORT = Number(env.PORT || 3001)
+const PORT = Number(env.PORT || 5000)
 
 app.listen(PORT, () => {
   console.log(`server is running at http://localhost:${PORT}`);})

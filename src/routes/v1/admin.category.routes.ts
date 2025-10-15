@@ -31,7 +31,7 @@ type LeanCategory = {
   status: "ACTIVE" | "HIDDEN";
 };
 
-router.post("/admin/categories", requireAdmin, async (req, res, next) => {
+router.post("/categories", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
     const body = CreateDTO.parse(req.body);
@@ -47,7 +47,7 @@ router.post("/admin/categories", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.patch("/admin/categories/:id", requireAdmin, async (req, res, next) => {
+router.patch("/categories/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
     const { id } = IdParam.parse(req.params);
@@ -67,7 +67,7 @@ router.patch("/admin/categories/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.delete("/admin/categories/:id", requireAdmin, async (req, res, next) => {
+router.delete("/categories/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
     const { id } = IdParam.parse(req.params);
