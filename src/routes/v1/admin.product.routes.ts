@@ -30,7 +30,7 @@ const IdParam = z.object({
   id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
 });
 
-router.post("/admin/products", requireAdmin, async (req, res, next) => {
+router.post("/products", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
     const body = AdminCreateProductDTO.parse(req.body);
@@ -71,7 +71,7 @@ type LeanProduct = {
   status: "ACTIVE" | "DRAFT" | "HIDDEN";
 };
 
-router.patch("/admin/products/:id", requireAdmin, async (req, res, next) => {
+router.patch("/products/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
     const { id } = IdParam.parse(req.params);
@@ -91,7 +91,7 @@ router.patch("/admin/products/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-router.delete("/admin/products/:id", requireAdmin, async (req, res, next) => {
+router.delete("/products/:id", requireAdmin, async (req, res, next) => {
   try {
     await dbConnect();
     const { id } = IdParam.parse(req.params);
