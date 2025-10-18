@@ -22,7 +22,7 @@ const app = express();
 
 
 const corsOptions = {
-  origin: (env.CORS_ORIGIN || "http://localhost:3000").split(","),
+  origin: (env.CORS_ORIGINS || "http://localhost:3000").split(","),
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -34,6 +34,7 @@ app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 
 // Rate limiting
 app.use(
