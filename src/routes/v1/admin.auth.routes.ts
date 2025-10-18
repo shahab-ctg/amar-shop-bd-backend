@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { dbConnect } from "../../db/connection.js";
-import { Admin } from "../../models/Admin.js";
-import { verifyPassword } from "../../utils/hash.js";
-import { signAccessToken } from "../../utils/jwt.js";
+import { dbConnect } from "@/db/connection.js";
+import { Admin } from "@/models/Admin.js";
+import { verifyPassword } from "@/utils/hash.js";
+import { signAccessToken } from "@/utils/jwt.js";
 import { z } from "zod";
 
 const router = Router();

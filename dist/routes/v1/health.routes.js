@@ -6,3 +6,4 @@ router.get("/health", (_req, res) => res.json({
     ts: new Date().toISOString(),
 }));
 export default router;
+//# sourceMappingURL=health.routes.js.map

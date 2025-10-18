@@ -1,10 +1,12 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config();
 export const env = {
     NODE_ENV: process.env.NODE_ENV ?? "development",
     PORT: process.env.PORT ?? "5000",
     MONGODB_URI: process.env.MONGODB_URI ?? "",
     MONGODB_DB: process.env.MONGODB_DB ?? "shodaigram",
-    CORS_ORIGIN: process.env.CORS_ORIGIN,
-    JWT_SECRET: process.env.JWT_SECRET ?? "",
-    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? "1d",
+    CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:3000",
+    JWT_SECRET: process.env.JWT_SECRET ?? "fallback-secret-key-change-in-production",
+    JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? "7d",
 };
+//# sourceMappingURL=env.js.map

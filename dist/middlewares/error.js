@@ -38,3 +38,4 @@ export function errorMiddleware(err, _req, res, _next) {
         message,
     });
 }
+//# sourceMappingURL=error.js.map

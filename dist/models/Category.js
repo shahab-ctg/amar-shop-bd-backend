@@ -14,3 +14,4 @@ const CategorySchema = new Schema({
 CategorySchema.index({ createdAt: -1 });
 export const Category = models.Category ||
     model("Category", CategorySchema);
+//# sourceMappingURL=Category.js.map

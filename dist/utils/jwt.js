@@ -16,3 +16,4 @@ export function verifyAccessToken(token) {
         throw Object.assign(new Error("FORBIDDEN"), { statusCode: 403 });
     return { sub, email, role: "ADMIN" };
 }
+//# sourceMappingURL=jwt.js.map

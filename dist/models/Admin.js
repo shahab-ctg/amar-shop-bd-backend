@@ -7,3 +7,4 @@ const AdminSchema = new Schema({
 }, { timestamps: true });
 export const Admin = models.Admin ||
     model("Admin", AdminSchema);
+//# sourceMappingURL=Admin.js.map

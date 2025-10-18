@@ -12,3 +12,4 @@ export const OrderCreatedDTO = z.object({
         qty: z.number().int().positive()
     })).min(1)
 });
+//# sourceMappingURL=order.dto.js.map

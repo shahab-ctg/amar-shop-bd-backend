@@ -9,3 +9,4 @@ export const ProductListQuery = PaginationQuery.extend({
     q: z.string().optional(),
     discounted: z.enum(["true", "false"]).optional()
 });
+//# sourceMappingURL=product.dto.js.map
