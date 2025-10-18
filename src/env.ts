@@ -7,7 +7,7 @@ export const env = {
   PORT: process.env.PORT ?? "5000",
   MONGODB_URI: process.env.MONGODB_URI ?? "",
   MONGODB_DB: process.env.MONGODB_DB ?? "shodaigram",
-  CORS_ORIGINS: process.env.CORS_ORIGIN || "http://localhost:3000",
+  CORS_ORIGINS: process.env.CORS_ORIGINS || "http://localhost:3000",
   JWT_SECRET:
     process.env.JWT_SECRET ?? "fallback-secret-key-change-in-production",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? "7d",
