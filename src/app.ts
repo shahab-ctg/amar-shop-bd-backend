@@ -13,9 +13,14 @@ import categories from "./routes/v1/category.routes.js";
 import adminAuth from "./routes/v1/admin.auth.routes.js";
 import adminProducts from "./routes/v1/admin.product.routes.js";
 import adminCategories from "./routes/v1/admin.category.routes.js";
+import uploads from "./routes/v1/uploads.routes.js";
+import banners from "./routes/v1/banner.routes.js";
+import adminBanners from "./routes/v1/admin.banner.routes.js";
+
 
 import { env } from "./env.js";
 import { errorMiddleware } from "./middlewares/error.js";
+
 
 const app = express();
 
@@ -65,12 +70,14 @@ app.use("/api/v1", health);
 app.use("/api/v1", products);
 app.use("/api/v1", orders);
 app.use("/api/v1", categories);
+app.use("/api/v1", uploads);
+app.use("/api/v1", banners); 
 
 // Admin Routes (protected)
 app.use("/api/v1/admin", adminAuth);
 app.use("/api/v1/admin", adminProducts);
 app.use("/api/v1/admin", adminCategories);
-
+app.use("/api/v1/admin", adminBanners);
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({

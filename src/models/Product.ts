@@ -6,6 +6,7 @@ export interface ProductDoc extends mongoose.Document {
   title: string;
   slug: string;
   image?: string;
+  imageId?: string;
   price: number;
   compareAtPrice?: number;
   isDiscounted?: boolean;
@@ -22,6 +23,7 @@ const ProductSchema = new Schema<ProductDoc>(
     title: { type: String, required: true, index: true },
     slug: { type: String, required: true, unique: true },
     image: String,
+    imageId: String,
     price: { type: Number, required: true, min: 0 },
     compareAtPrice: { type: Number, min: 0 },
     isDiscounted: { type: Boolean, default: false, index: true },
