@@ -4,6 +4,7 @@ const ProductSchema = new Schema({
     title: { type: String, required: true, index: true },
     slug: { type: String, required: true, unique: true },
     image: String,
+    imageId: String,
     price: { type: Number, required: true, min: 0 },
     compareAtPrice: { type: Number, min: 0 },
     isDiscounted: { type: Boolean, default: false, index: true },
