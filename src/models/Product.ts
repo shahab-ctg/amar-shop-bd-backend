@@ -5,13 +5,15 @@ export interface ProductDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
   title: string;
   slug: string;
-  image?: string;
-  imageId?: string;
+  images: string[]; // multiple Cloudinary URLs
+  imageIds?: string[]; // Cloudinary public IDs for delete
   price: number;
   compareAtPrice?: number;
   isDiscounted?: boolean;
   stock?: number;
   categorySlug?: string;
+  brand?: string;
+  description?: string;
   tagSlugs?: string[];
   status: "ACTIVE" | "DRAFT" | "HIDDEN";
   createdAt?: Date;
@@ -22,13 +24,15 @@ const ProductSchema = new Schema<ProductDoc>(
   {
     title: { type: String, required: true, index: true },
     slug: { type: String, required: true, unique: true },
-    image: String,
-    imageId: String,
+    images: { type: [String], default: [] },
+    imageIds: { type: [String], default: [] },
     price: { type: Number, required: true, min: 0 },
     compareAtPrice: { type: Number, min: 0 },
-    isDiscounted: { type: Boolean, default: false, index: true },
+    isDiscounted: { type: Boolean, default: false },
     stock: { type: Number, default: 0 },
     categorySlug: { type: String, index: true },
+    brand: { type: String, default: "Generic" },
+    description: { type: String, default: "" },
     tagSlugs: [{ type: String, index: true }],
     status: {
       type: String,

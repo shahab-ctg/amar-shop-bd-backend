@@ -3,9 +3,10 @@ const { Schema, model, models } = mongoose;
 
 export interface CategoryDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
-  title: string;
+  name: string;
   slug: string;
   image?: string;
+  description?: string;
   status: "ACTIVE" | "HIDDEN";
   createdAt?: Date;
   updatedAt?: Date;
@@ -13,9 +14,10 @@ export interface CategoryDoc extends mongoose.Document {
 
 const CategorySchema = new Schema<CategoryDoc>(
   {
-    title: { type: String, required: true, index: true },
-    slug: { type: String, required: true, unique: true },
-    image: { type: String },
+    name: { type: String, required: true, unique: true, index: true },
+    slug: { type: String, required: true, unique: true, index: true },
+    image: { type: String, default: "" },
+    description: { type: String, default: "" },
     status: {
       type: String,
       enum: ["ACTIVE", "HIDDEN"],
@@ -25,8 +27,6 @@ const CategorySchema = new Schema<CategoryDoc>(
   },
   { timestamps: true }
 );
-
-CategorySchema.index({ createdAt: -1 });
 
 export const Category =
   (models.Category as mongoose.Model<CategoryDoc>) ||
