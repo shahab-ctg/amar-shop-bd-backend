@@ -59,7 +59,7 @@ app.use(
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    service: "Shodaigram Backend",
+    service: "Amar Shop Bd Backend",
     timestamp: new Date().toISOString(),
     environment: env.NODE_ENV,
   });

@@ -1,6 +1,6 @@
 // src/routes/uploads.ts
 import { cloudinary } from "../../lib/cloudinary.js";
-import { requireAdmin } from "../../middlewares/auth.js";
+import { requireAdmin } from "@/middlewares/auth.js";
 import { Router } from "express";
 import { z } from "zod";
 const router = Router();

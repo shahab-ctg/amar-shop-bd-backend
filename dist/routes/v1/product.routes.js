@@ -2,7 +2,7 @@ import { Router } from "express";
 import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { z } from "zod";
-import { validateQuery } from "../../middlewares/validate.js";
+import { validateQuery } from "@/middlewares/validate.js";
 const router = Router();
 const ProductListQuery = z.object({
     page: z.coerce.number().int().positive().default(1),

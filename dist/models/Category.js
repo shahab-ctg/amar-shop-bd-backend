@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 const CategorySchema = new Schema({
-    title: { type: String, required: true, index: true },
-    slug: { type: String, required: true, unique: true },
-    image: { type: String },
+    name: { type: String, required: true, unique: true, index: true },
+    slug: { type: String, required: true, unique: true, index: true },
+    image: { type: String, default: "" },
+    description: { type: String, default: "" },
     status: {
         type: String,
         enum: ["ACTIVE", "HIDDEN"],
@@ -11,7 +12,6 @@ const CategorySchema = new Schema({
         index: true,
     },
 }, { timestamps: true });
-CategorySchema.index({ createdAt: -1 });
 export const Category = models.Category ||
     model("Category", CategorySchema);
 //# sourceMappingURL=Category.js.map

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { env } from "../env.js";
+import { env } from "@/env.js";
 let conn = null;
 let connecting = null;
 export async function dbConnect() {

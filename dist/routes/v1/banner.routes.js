@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Banner } from "../../models/banner.model.js";
+import { Banner } from "@/models/banner.model.js";
 const router = Router();
 /**
  * GET /api/v1/banners

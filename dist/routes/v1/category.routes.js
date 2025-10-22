@@ -1,6 +1,6 @@
 // Backend - src/routes/v1/category.routes.ts
 import { Router } from "express";
-import { Category } from "../../models/Category.js";
+import { Category } from "@/models/Category.js";
 const router = Router();
 // Public categories endpoint
 router.get("/categories", async (req, res) => {

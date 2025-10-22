@@ -1,4 +1,4 @@
-import { verifyAccessToken } from "../utils/jwt.js";
+import { verifyAccessToken } from "@/utils/jwt.js";
 export function requireAdmin(req, res, next) {
     const hdr = req.header("Authorization") || "";
     const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;

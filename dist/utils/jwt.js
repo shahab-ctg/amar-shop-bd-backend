@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { env } from "../env.js";
+import { env } from "@/env.js";
 const JWT_SECRET = (env.JWT_SECRET || "dev_secret_change_me");
 const DEFAULT_EXPIRES_IN = (env.JWT_EXPIRES_IN ?? "1d");
 export function signAccessToken(payload) {
