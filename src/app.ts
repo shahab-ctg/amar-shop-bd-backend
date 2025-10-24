@@ -16,6 +16,7 @@ import adminCategories from "./routes/v1/admin.category.routes.js";
 import uploads from "./routes/v1/uploads.routes.js";
 import banners from "./routes/v1/banner.routes.js";
 import adminBanners from "./routes/v1/admin.banner.routes.js";
+import customerOrders from "./routes/v1/customer.orders.routes.js";
 
 
 import { env } from "./env.js";
@@ -69,6 +70,7 @@ app.get("/", (req, res) => {
 app.use("/api/v1", health);
 app.use("/api/v1", products);
 app.use("/api/v1", orders);
+app.use("/api/v1", customerOrders);
 app.use("/api/v1", categories);
 app.use("/api/v1", uploads);
 app.use("/api/v1", banners); 

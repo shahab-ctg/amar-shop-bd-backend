@@ -1,14 +1,16 @@
+// src/models/Banner.ts
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
 export interface BannerDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
-  image: string; // absolute/public URL 
+  image: string; // absolute/public URL
   title: string;
   subtitle: string;
   discount?: string; // optional badge like "৩০% ছাড়"
   status: "ACTIVE" | "HIDDEN";
   sort: number; // smaller = higher priority
+  position?: "hero" | "side"; // ⭐ NEW
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -26,11 +28,17 @@ const BannerSchema = new Schema<BannerDoc>(
       index: true,
     },
     sort: { type: Number, default: 100, index: true },
+    position: {
+      type: String,
+      enum: ["hero", "side"],
+      default: "hero",
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-BannerSchema.index({ sort: 1, createdAt: -1 });
+BannerSchema.index({ position: 1, sort: 1, createdAt: -1 });
 
 export const Banner =
   (models.Banner as mongoose.Model<BannerDoc>) ||
