@@ -43,7 +43,7 @@ app.use(rateLimit({
 app.get("/", (req, res) => {
     res.json({
         ok: true,
-        service: "Shodaigram Backend",
+        service: "Amar Shop Bd Backend",
         timestamp: new Date().toISOString(),
         environment: env.NODE_ENV,
     });
@@ -72,4 +72,3 @@ app.use((req, res) => {
 // Error Handler (should be last)
 app.use(errorMiddleware);
 export default app;
-//# sourceMappingURL=app.js.map

@@ -5,18 +5,19 @@ import jwt, {
 } from "jsonwebtoken";
 import { env } from "@/env.js";
 
-export type AdminJwtPayload = { sub: string; email: string; role: "ADMIN" };
+export type AdminJwtPayload = {
+  sub: string;
+  email: string;
+  role: "ADMIN" | "SUPER_ADMIN";
+};
 
-const JWT_SECRET: Secret = (env.JWT_SECRET || "dev_secret_change_me") as Secret;
-
-// ← এখানে টাইপ alias বানালাম
-type ExpiresIn = SignOptions["expiresIn"];
-const DEFAULT_EXPIRES_IN: ExpiresIn = (env.JWT_EXPIRES_IN ?? "1d") as ExpiresIn;
+const JWT_SECRET: Secret = (env.JWT_SECRET || "dev_secret") as Secret;
+const DEFAULT_EXPIRES_IN: SignOptions["expiresIn"] = (env.JWT_EXPIRES_IN ??
+  "1d") as SignOptions["expiresIn"];
 
 export function signAccessToken(payload: AdminJwtPayload): string {
-  const p: Record<string, unknown> = { ...payload };
   const opts: SignOptions = { expiresIn: DEFAULT_EXPIRES_IN };
-  return jwt.sign(p, JWT_SECRET, opts);
+  return jwt.sign(payload, JWT_SECRET, opts);
 }
 
 export function verifyAccessToken(token: string): AdminJwtPayload {
@@ -25,8 +26,8 @@ export function verifyAccessToken(token: string): AdminJwtPayload {
     throw Object.assign(new Error("UNAUTHORIZED"), { statusCode: 401 });
 
   const { sub, email, role } = decoded as Partial<AdminJwtPayload>;
-  if (!sub || !email || role !== "ADMIN")
+  if (!sub || !email || !["ADMIN", "SUPER_ADMIN"].includes(role || ""))
     throw Object.assign(new Error("FORBIDDEN"), { statusCode: 403 });
 
-  return { sub, email, role: "ADMIN" };
+  return { sub, email, role: role as "ADMIN" | "SUPER_ADMIN" };
 }

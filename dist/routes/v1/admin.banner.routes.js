@@ -70,4 +70,3 @@ router.delete("/banners/:id", requireAdmin, async (req, res, next) => {
     }
 });
 export default router;
-//# sourceMappingURL=admin.banner.routes.js.map

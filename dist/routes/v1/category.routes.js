@@ -48,4 +48,3 @@ router.get("/categories/:slug", async (req, res) => {
     }
 });
 export default router;
-//# sourceMappingURL=category.routes.js.map

@@ -6,4 +6,3 @@ app.listen(PORT, () => {
     console.log(`📊 Environment: ${env.NODE_ENV}`);
     console.log(`🔗 CORS Origin: ${env.CORS_ORIGINS}`);
 });
-//# sourceMappingURL=server.js.map

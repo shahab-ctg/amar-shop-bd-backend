@@ -165,4 +165,3 @@ router.delete("/orders/:id", requireAdmin, async (req, res, next) => {
     }
 });
 export default router;
-//# sourceMappingURL=order.routes.js.map

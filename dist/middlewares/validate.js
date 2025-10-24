@@ -8,4 +8,3 @@ export const validateBody = (schema) => (req, res, next) => {
     res.locals.body = parsed;
     next();
 };
-//# sourceMappingURL=validate.js.map

@@ -27,4 +27,3 @@ router.get("/banners", async (_req, res, next) => {
     }
 });
 export default router;
-//# sourceMappingURL=banner.routes.js.map

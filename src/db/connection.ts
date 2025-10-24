@@ -11,10 +11,12 @@ export async function dbConnect(): Promise<typeof mongoose> {
 
   if(!env.MONGODB_URI){
   throw new Error("MongoDb Uri is missing. Check your env file")}
+  console.log("✅ MongoDB Connected to", env.MONGODB_DB);
+
 
 if(!connecting){
   connecting = mongoose.connect(env.MONGODB_URI, {
-    dbName: env.MONGODB_DB || "shodaigram"
+    dbName: env.MONGODB_DB || "amar-shop-backend"
   }).then((m) => {
     conn = m;
     return m;
@@ -24,6 +26,8 @@ if(!connecting){
   })
   
 }
+console.log("✅ MongoDB Connected to", env.MONGODB_DB);
+
   
   return connecting;
 }

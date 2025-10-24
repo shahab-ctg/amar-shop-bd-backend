@@ -17,4 +17,3 @@ export function requireAdmin(req, res, next) {
         return res.status(401).json({ ok: false, code: "UNAUTHORIZED" });
     }
 }
-//# sourceMappingURL=auth.js.map

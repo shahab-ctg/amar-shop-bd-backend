@@ -18,4 +18,3 @@ cloudinary.config({
 });
 console.log(" Cloudinary configured successfully");
 export { cloudinary };
-//# sourceMappingURL=cloudinary.js.map

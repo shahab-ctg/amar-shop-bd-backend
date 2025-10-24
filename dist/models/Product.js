@@ -23,4 +23,3 @@ const ProductSchema = new Schema({
 ProductSchema.index({ createdAt: -1 });
 export const Product = models.Product ||
     model("Product", ProductSchema);
-//# sourceMappingURL=Product.js.map

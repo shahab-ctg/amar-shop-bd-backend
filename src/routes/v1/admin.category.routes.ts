@@ -16,10 +16,7 @@ const CreateDTO = z.object({
   status: z.enum(["ACTIVE", "HIDDEN"]).optional().default("ACTIVE"),
 });
 
-const UpdateDTO = CreateDTO.partial().refine((d) => Object.keys(d).length > 0, {
-  message: "At least one field required",
-});
-
+const UpdateDTO = CreateDTO.partial();
 const IdParam = z.object({
   id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
 });
@@ -84,5 +81,4 @@ router.delete("/categories/:id", requireAdmin, async (req, res, next) => {
   }
 });
 
-// ✅ FIX: Add this line
 export default router;

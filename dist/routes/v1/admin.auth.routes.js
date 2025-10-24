@@ -45,4 +45,3 @@ router.post("/auth/login", async (req, res, next) => {
     }
 });
 export default router;
-//# sourceMappingURL=admin.auth.routes.js.map

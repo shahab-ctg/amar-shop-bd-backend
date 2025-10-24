@@ -106,4 +106,3 @@ router.get("/dev/seed", async (_req, res, next) => {
     }
 });
 export default router;
-//# sourceMappingURL=product.routes.js.map

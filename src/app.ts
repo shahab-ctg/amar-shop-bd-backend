@@ -74,7 +74,7 @@ app.use("/api/v1", uploads);
 app.use("/api/v1", banners); 
 
 // Admin Routes (protected)
-app.use("/api/v1/admin", adminAuth);
+app.use("/api/v1", adminAuth);
 app.use("/api/v1/admin", adminProducts);
 app.use("/api/v1/admin", adminCategories);
 app.use("/api/v1/admin", adminBanners);

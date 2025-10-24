@@ -11,7 +11,7 @@ const router = Router();
 const folder = process.env.CLOUDINARY_FOLDER || "shodaigram";
 
 router.post("/uploads", requireAdmin, async (req, res) => {
-  // signed direct upload-এর জন্য timestamp + signature (server-side)
+  
    try {
      console.log("Upload signature requested");
 

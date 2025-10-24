@@ -16,4 +16,3 @@ const BannerSchema = new Schema({
 BannerSchema.index({ sort: 1, createdAt: -1 });
 export const Banner = models.Banner ||
     model("Banner", BannerSchema);
-//# sourceMappingURL=banner.model.js.map

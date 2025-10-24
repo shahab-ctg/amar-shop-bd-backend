@@ -1,4 +1,3 @@
-// Backend - src/routes/v1/category.routes.ts
 import { Router } from "express";
 import { Category } from "@/models/Category.js";
 
@@ -8,15 +7,15 @@ const router = Router();
 router.get("/categories", async (req, res) => {
   try {
     const categories = await Category.find({ status: "ACTIVE" })
-      .select("title slug image status")
-      .sort({ title: 1 });
+      .select("name slug image description status")
+      .sort({ name: 1 });
 
     res.json({
       ok: true,
       data: categories,
     });
   } catch (error) {
-    console.error("Categories fetch error:", error);
+    console.error("❌ Categories fetch error:", error);
     res.status(500).json({
       ok: false,
       message: "Failed to fetch categories",
@@ -44,7 +43,7 @@ router.get("/categories/:slug", async (req, res) => {
       data: category,
     });
   } catch (error) {
-    console.error("Category fetch error:", error);
+    console.error("❌ Category fetch error:", error);
     res.status(500).json({
       ok: false,
       message: "Failed to fetch category",

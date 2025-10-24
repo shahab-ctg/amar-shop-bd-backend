@@ -43,4 +43,3 @@ router.post("/uploads/delete", requireAdmin, async (req, res, next) => {
     }
 });
 export default router;
-//# sourceMappingURL=uploads.routes.js.map
