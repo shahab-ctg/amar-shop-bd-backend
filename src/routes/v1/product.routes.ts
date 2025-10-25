@@ -4,7 +4,8 @@ import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { z } from "zod";
 import { Types } from "mongoose";
-import { validateQuery } from "@/middlewares/validate.js";
+import { validateQuery } from "../../middlewares/validate.js";
+
 
 
 const router = Router();

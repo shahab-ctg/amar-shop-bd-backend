@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { dbConnect } from "@/db/connection.js";
-import { Admin } from "@/models/Admin.js";
-import { verifyPassword } from "@/utils/hash.js";
-import { signAccessToken } from "@/utils/jwt.js";
 import { z } from "zod";
+import { dbConnect } from "../../db/connection";
+import { Admin } from "../../models/Admin";
+import { verifyPassword } from "../../utils/hash";
+import { signAccessToken } from "../../utils/jwt";
 const router = Router();
 const LoginDTO = z.object({
     email: z.string().email(),

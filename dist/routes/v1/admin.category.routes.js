@@ -1,9 +1,9 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { dbConnect } from "@/db/connection.js";
-import { requireAdmin } from "@/middlewares/auth.js";
-import { Category } from "@/models/Category.js";
+import requireAdmin from "../../middlewares/auth";
+import { dbConnect } from "../../db/connection";
+import { Category } from "../../models/Category";
 const router = Router();
 const { Types } = mongoose;
 const CreateDTO = z.object({
@@ -13,9 +13,7 @@ const CreateDTO = z.object({
     description: z.string().optional(),
     status: z.enum(["ACTIVE", "HIDDEN"]).optional().default("ACTIVE"),
 });
-const UpdateDTO = CreateDTO.partial().refine((d) => Object.keys(d).length > 0, {
-    message: "At least one field required",
-});
+const UpdateDTO = CreateDTO.partial();
 const IdParam = z.object({
     id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
 });
@@ -66,5 +64,4 @@ router.delete("/categories/:id", requireAdmin, async (req, res, next) => {
         next(err);
     }
 });
-// ✅ FIX: Add this line
 export default router;

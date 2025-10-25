@@ -1,3 +1,4 @@
+// src/models/Banner.ts
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 const BannerSchema = new Schema({
@@ -12,7 +13,13 @@ const BannerSchema = new Schema({
         index: true,
     },
     sort: { type: Number, default: 100, index: true },
+    position: {
+        type: String,
+        enum: ["hero", "side"],
+        default: "hero",
+        index: true,
+    },
 }, { timestamps: true });
-BannerSchema.index({ sort: 1, createdAt: -1 });
+BannerSchema.index({ position: 1, sort: 1, createdAt: -1 });
 export const Banner = models.Banner ||
     model("Banner", BannerSchema);

@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import { env } from "@/env.js";
+import mongoose from "mongoose";
+import { env } from "../env";
 let conn = null;
 let connecting = null;
 export async function dbConnect() {
@@ -9,9 +9,11 @@ export async function dbConnect() {
         throw new Error("MongoDb Uri is missing. Check your env file");
     }
     if (!connecting) {
-        connecting = mongoose.connect(env.MONGODB_URI, {
-            dbName: env.MONGODB_DB || "shodaigram"
-        }).then((m) => {
+        connecting = mongoose
+            .connect(env.MONGODB_URI, {
+            dbName: env.MONGODB_DB || "shodaigram",
+        })
+            .then((m) => {
             conn = m;
             return m;
         })

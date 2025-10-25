@@ -1,11 +1,9 @@
-
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
-// Import routes
 import products from "./routes/v1/product.routes.js";
 import orders from "./routes/v1/order.routes.js";
 import health from "./routes/v1/health.routes.js";
@@ -18,79 +16,51 @@ import banners from "./routes/v1/banner.routes.js";
 import adminBanners from "./routes/v1/admin.banner.routes.js";
 import customerOrders from "./routes/v1/customer.orders.routes.js";
 
-
 import { env } from "./env.js";
 import { errorMiddleware } from "./middlewares/error.js";
 
-
 const app = express();
 
-
-
-const corsOptions = {
-  origin: (env.CORS_ORIGINS || "http://localhost:3000").split(","),
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-
+//  CORS
+app.use(cors({ origin: env.CORS_ORIGINS.split(","), credentials: true }));
 app.use(helmet());
-app.use(cors(corsOptions)); 
 app.use(morgan("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+//  Rate limit
+if (process.env.NODE_ENV === "production") {
+  const limiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    limit: 500,
+    message: "Too many requests, please try again later.",
+  });
+  app.use(limiter);
+}
 
 
-// Rate limiting
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    max: 300, 
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      ok: false,
-      error: "Too many requests, please try again later.",
-    },
-  })
-);
 
-// Health check route (basic)
+//  Routes
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    service: "Amar Shop Bd Backend",
+    message: "🛍 Amar Shop Backend API running",
     timestamp: new Date().toISOString(),
-    environment: env.NODE_ENV,
   });
 });
-
-// API Routes
 app.use("/api/v1", health);
 app.use("/api/v1", products);
 app.use("/api/v1", orders);
 app.use("/api/v1", customerOrders);
 app.use("/api/v1", categories);
 app.use("/api/v1", uploads);
-app.use("/api/v1", banners); 
-
-// Admin Routes (protected)
+app.use("/api/v1", banners);
 app.use("/api/v1", adminAuth);
 app.use("/api/v1/admin", adminProducts);
 app.use("/api/v1/admin", adminCategories);
 app.use("/api/v1/admin", adminBanners);
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({
-    ok: false,
-    code: "NOT_FOUND",
-    message: "Route not found",
-    path: req.originalUrl,
-  });
-});
 
-// Error Handler (should be last)
+app.use((req, res) => res.status(404).json({ ok: false, code: "NOT_FOUND" }));
 app.use(errorMiddleware);
 
 export default app;

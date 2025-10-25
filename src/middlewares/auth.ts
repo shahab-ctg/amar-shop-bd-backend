@@ -1,25 +1,27 @@
 import { Request, Response, NextFunction } from "express";
-import { verifyAccessToken } from "@/utils/jwt.js";
+import jwt from "jsonwebtoken";
+import { env } from "../env.js";
 
+//  make it a named export (TypeScript friendly)
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  const hdr = req.header("Authorization") || "";
-  const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;
-
-  if (!token)
-    return res.status(401).json({ ok: false, message: "Missing token" });
-
   try {
-    const payload = verifyAccessToken(token);
-
-    if (!["ADMIN", "SUPER_ADMIN"].includes(payload.role)) {
-      return res.status(403).json({ ok: false, message: "Forbidden" });
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith("Bearer ")) {
+      return res.status(401).json({ ok: false, code: "NO_TOKEN" });
     }
 
-    // @ts-ignore
-    req.user = payload;
+    const token = header.split(" ")[1];
+    const decoded = jwt.verify(token, env.JWT_SECRET) as { role?: string };
+
+    if (decoded.role !== "ADMIN") {
+      return res.status(403).json({ ok: false, code: "FORBIDDEN" });
+    }
+
     next();
   } catch (err) {
-    console.error("❌ JWT verify failed:", err);
-    return res.status(401).json({ ok: false, message: "Invalid token" });
+    return res.status(401).json({ ok: false, code: "INVALID_TOKEN" });
   }
 }
+
+// 👇 keep default export too so either syntax works
+export default requireAdmin;

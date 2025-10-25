@@ -2,27 +2,19 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "moduleResolution": "node",
-    "baseUrl": "./src",
+    "moduleResolution": "Bundler",
+    "rootDir": "src",
+    "outDir": "dist",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/middlewares": ["./middlewares/index.ts"],
-      "@/env": ["./env.ts"],
-      "@/utils": ["./utils/index.ts"]
+      "@/*": ["src/*"]
     },
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": false
+    "strict": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "tsc-alias": {
-    "resolveFullPaths": true,
-    "verbose": false
-  }
+  "exclude": ["node_modules", "dist"]
 }

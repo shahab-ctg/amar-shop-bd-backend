@@ -1,26 +1,27 @@
+// src/routes/v1/banner.routes.ts
 import { Router } from "express";
-import { Banner } from "@/models/banner.model.js";
+import { z } from "zod";
+import { dbConnect } from "../../db/connection";
+import { Banner } from "../../models/banner.model";
 const router = Router();
-/**
- * GET /api/v1/banners
- * Public list – ACTIVE only, sorted by sort ASC then createdAt DESC
- * Response: { ok: true, data: Banner[] }
- */
-router.get("/banners", async (_req, res, next) => {
+const BannerQuery = z.object({
+    position: z.enum(["hero", "side"]).optional(),
+    status: z.enum(["ACTIVE", "HIDDEN"]).optional(),
+});
+router.get("/banners", async (req, res, next) => {
     try {
-        const list = await Banner.find({ status: "ACTIVE" })
+        await dbConnect();
+        const q = BannerQuery.parse(req.query);
+        const filter = {};
+        if (q.position)
+            filter.position = q.position;
+        // default show ACTIVE banners only
+        filter.status = q.status ?? "ACTIVE";
+        const items = await Banner.find(filter)
             .sort({ sort: 1, createdAt: -1 })
             .lean()
             .exec();
-        // normalize id field for frontend (string)
-        const data = list.map((b) => ({
-            id: String(b._id),
-            image: b.image,
-            title: b.title,
-            subtitle: b.subtitle,
-            discount: b.discount,
-        }));
-        return res.json({ ok: true, data });
+        res.json({ ok: true, data: items });
     }
     catch (e) {
         next(e);

@@ -1,3 +1,4 @@
+// src/models/Product.ts
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 const ProductSchema = new Schema({
@@ -19,6 +20,46 @@ const ProductSchema = new Schema({
         default: "ACTIVE",
         index: true,
     },
+    // ⭐ Cosmetics additions
+    featured: { type: Boolean, default: false, index: true },
+    shade: { type: String },
+    colorHex: { type: String },
+    size: {
+        unit: { type: String, enum: ["ml", "g", "pcs"], required: false },
+        value: { type: Number, required: false, min: 0 },
+    },
+    variants: [
+        {
+            sku: { type: String, required: true },
+            shade: String,
+            colorHex: String,
+            size: {
+                unit: { type: String, enum: ["ml", "g", "pcs"] },
+                value: { type: Number, min: 0 },
+            },
+            price: { type: Number, min: 0 },
+            compareAtPrice: { type: Number, min: 0 },
+            stock: { type: Number, min: 0 },
+            image: String,
+        },
+    ],
+    skinType: [{ type: String }],
+    hairType: [{ type: String }],
+    concerns: [{ type: String }],
+    ingredients: [{ type: String }],
+    allergens: [{ type: String }],
+    claims: [{ type: String }],
+    howToUse: { type: String },
+    caution: { type: String },
+    benefits: [{ type: String }],
+    gender: {
+        type: String,
+        enum: ["unisex", "female", "male"],
+        required: false,
+    },
+    origin: { type: String },
+    expiry: { type: Date },
+    batchNo: { type: String },
 }, { timestamps: true });
 ProductSchema.index({ createdAt: -1 });
 export const Product = models.Product ||

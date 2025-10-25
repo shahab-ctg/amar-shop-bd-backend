@@ -1,15 +1,27 @@
-// src/routes/uploads.ts
+
+
+
 
 import { cloudinary } from "../../lib/cloudinary.js"; 
-import { requireAdmin } from "@/middlewares/auth.js";
+
 import { Router } from "express";
 import { z } from "zod";
+import  requireAdmin  from "../../middlewares/auth.js";
+import { env } from "../../env.js";
+
+
+
 
 
 const router = Router();
 
-const folder = process.env.CLOUDINARY_FOLDER || "shodaigram";
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
+});
 
+const folder = env.CLOUDINARY_FOLDER;
 router.post("/uploads", requireAdmin, async (req, res) => {
   
    try {
@@ -19,10 +31,12 @@ router.post("/uploads", requireAdmin, async (req, res) => {
 
      const signature = cloudinary.utils.api_sign_request(
        { timestamp, folder },
-       process.env.CLOUDINARY_API_SECRET
+       env.CLOUDINARY_API_SECRET 
      );
 
-     console.log("✅ Upload signature generated");
+     
+
+     console.log(" Upload signature generated");
 
      return res.json({
        ok: true,

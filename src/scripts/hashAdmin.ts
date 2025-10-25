@@ -1,5 +1,5 @@
 
-import { hashPassword } from "../src/utils/hash.js";
+import { hashPassword } from "../utils/hash.js";
 
 const plain = "123456"; 
 
