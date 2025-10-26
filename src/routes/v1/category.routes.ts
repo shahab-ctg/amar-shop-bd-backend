@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { Category } from "../../models/Category";
+import { dbConnect } from "@/db/connection";
 
 const router = Router();
 
-/**
- * Public categories endpoint (safe & backward compatible)
- */
+
 router.get("/categories", async (_req, res) => {
   try {
+    await dbConnect()
     const docs = await Category.find({ status: "ACTIVE" })
       .select("_id title name slug image description status")
       .sort({ title: 1, name: 1 })
@@ -39,6 +39,7 @@ router.get("/categories", async (_req, res) => {
  */
 router.get("/categories/:slug", async (req, res) => {
   try {
+    await dbConnect()
     const c: any = await Category.findOne({
       slug: req.params.slug,
       status: "ACTIVE",

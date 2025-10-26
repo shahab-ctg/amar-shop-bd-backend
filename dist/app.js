@@ -24,7 +24,14 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 //  Rate limit
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
+if (process.env.NODE_ENV === "production") {
+    const limiter = rateLimit({
+        windowMs: 1 * 60 * 1000,
+        limit: 500,
+        message: "Too many requests, please try again later.",
+    });
+    app.use(limiter);
+}
 //  Routes
 app.get("/", (req, res) => {
     res.json({
