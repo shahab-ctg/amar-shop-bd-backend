@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { env } from "../env";
+import { env } from "../env.js";
 const JWT_SECRET = (env.JWT_SECRET || "dev_secret");
 const DEFAULT_EXPIRES_IN = (env.JWT_EXPIRES_IN ??
     "1d");

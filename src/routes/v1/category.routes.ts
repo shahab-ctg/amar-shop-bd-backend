@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { Category } from "../../models/Category";
-import { dbConnect } from "@/db/connection";
+import { Category } from "../../models/Category.js";
+import { dbConnect } from "@/db/connection.js";
 
 const router = Router();
 

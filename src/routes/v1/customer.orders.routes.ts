@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import mongoose from "mongoose";
-import { dbConnect } from "../../db/connection";
-import { Order } from "../../models/Order";
+
+import { dbConnect } from "../../db/connection.js";
+import { Order } from "../../models/Order.js";
 
 
 

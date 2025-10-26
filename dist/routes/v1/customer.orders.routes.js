@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { dbConnect } from "../../db/connection";
-import { Order } from "../../models/Order";
+import { dbConnect } from "../../db/connection.js";
+import { Order } from "../../models/Order.js";
 const router = Router();
 const OrderListQuery = z.object({
     page: z.coerce.number().int().positive().default(1),

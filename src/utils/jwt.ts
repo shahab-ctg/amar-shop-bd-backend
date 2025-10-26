@@ -3,7 +3,7 @@ import jwt, {
   type SignOptions,
   type JwtPayload as LibJwtPayload,
 } from "jsonwebtoken";
-import { env } from "../env";
+import { env } from "../env.js";
 
 
 export type AdminJwtPayload = {

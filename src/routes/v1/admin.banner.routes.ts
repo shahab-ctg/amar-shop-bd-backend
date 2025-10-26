@@ -1,7 +1,7 @@
-import { Router } from "express";
+import  Router  from "express";
 import { z } from "zod";
-import requireAdmin from "../../middlewares/auth";
-import { Banner } from "../../models/banner.model";
+import requireAdmin from "../../middlewares/auth.js";
+import { Banner } from "../../models/banner.model.js";
 
 
 const router = Router();

@@ -10,7 +10,7 @@ export interface BannerDoc extends mongoose.Document {
   discount?: string; // optional badge like "৩০% ছাড়"
   status: "ACTIVE" | "HIDDEN";
   sort: number; // smaller = higher priority
-  position?: "hero" | "side"; // ⭐ NEW
+  position?: "hero" | "side"; // 
   createdAt?: Date;
   updatedAt?: Date;
 }

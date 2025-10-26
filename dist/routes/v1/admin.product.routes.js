@@ -1,9 +1,9 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
-import requireAdmin from "../../middlewares/auth";
-import { dbConnect } from "../../db/connection";
-import { Product } from "../../models/Product";
+import requireAdmin from "../../middlewares/auth.js";
+import { dbConnect } from "../../db/connection.js";
+import { Product } from "../../models/Product.js";
 const router = Router();
 const { Types } = mongoose;
 const SizeDTO = z

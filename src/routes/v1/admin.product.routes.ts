@@ -2,9 +2,9 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
-import requireAdmin from "../../middlewares/auth";
-import { dbConnect } from "../../db/connection";
-import { Product, ProductDoc } from "../../models/Product";
+import requireAdmin from "../../middlewares/auth.js";
+import { dbConnect } from "../../db/connection.js";
+import { Product, ProductDoc } from "../../models/Product.js";
 
 
 const router = Router();

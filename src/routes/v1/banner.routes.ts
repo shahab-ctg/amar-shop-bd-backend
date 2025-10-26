@@ -1,8 +1,8 @@
-// src/routes/v1/banner.routes.ts
+
 import { Router } from "express";
 import { z } from "zod";
-import { dbConnect } from "../../db/connection";
-import { Banner } from "../../models/banner.model";
+import { dbConnect } from "../../db/connection.js";
+import { Banner } from "../../models/banner.model.js";
 
 
 
