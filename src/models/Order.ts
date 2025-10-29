@@ -16,8 +16,7 @@ export interface OrderDoc extends mongoose.Document {
     name: string;
     email: string;
     phone: string;
-    address: string;
-    area: string;
+   
   };
   lines: OrderLine[];
   totals: { subTotal: number; shipping: number; grandTotal: number };
@@ -32,8 +31,7 @@ const OrderSchema = new Schema<OrderDoc>(
       name: String,
       email: String,
       phone: String,
-      address: String,
-      area: String,
+     
     },
     lines: [
       {
@@ -62,3 +60,15 @@ const OrderSchema = new Schema<OrderDoc>(
 export const Order =
   (models.Order as mongoose.Model<OrderDoc>) ||
   model<OrderDoc>("Order", OrderSchema);
+
+customer: {
+  name: String;
+  email: String;
+  phone: String;
+  
+  
+  houseOrVillage: String;
+  roadOrPostOffice: String;
+  blockOrThana: String;
+  district: String;
+}

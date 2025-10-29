@@ -11,7 +11,7 @@ import requireAdmin from "../../middlewares/auth.js";
 const router = Router();
 const { Types } = mongoose;
 
-// আমরা যে ফিল্ডগুলো ব্যবহার করছি সেগুলোর মিনিমাল টাইপ
+
 type LeanProductForOrder = {
   _id: mongoose.Types.ObjectId;
   title: string;
@@ -26,8 +26,7 @@ type LeanOrder = {
     name: string;
     email: string;
     phone: string;
-    address: string;
-    area: string;
+    
   };
   lines: {
     productId: mongoose.Types.ObjectId;
@@ -46,8 +45,12 @@ const OrderCreateDTO = z.object({
     name: z.string().min(2),
     email: z.string().email(),
     phone: z.string().min(6),
-    address: z.string().min(3),
-    area: z.string().min(2),
+    
+   
+    houseOrVillage: z.string().min(2), 
+    roadOrPostOffice: z.string().min(2), 
+    blockOrThana: z.string().min(2), 
+    district: z.string().min(2), 
   }),
   lines: z
     .array(
