@@ -13,7 +13,7 @@ export interface OrderDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
   customer: {
     name: string;
-    email: string;
+   
     phone: string;
     houseOrVillage: string;
     roadOrPostOffice: string;
@@ -31,7 +31,7 @@ const OrderSchema = new Schema<OrderDoc>(
   {
     customer: {
       name: { type: String, required: true },
-      email: { type: String, required: true },
+    
       phone: { type: String, required: true },
       houseOrVillage: { type: String, required: true },
       roadOrPostOffice: { type: String, required: true },

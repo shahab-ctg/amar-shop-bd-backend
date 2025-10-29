@@ -4,7 +4,7 @@ import z from "zod";
 export const OrderCreatedDTO = z.object({
   customer: z.object({
     name: z.string().min(2),
-    email: z.string().email(),
+    
     phone: z.string().min(6),
     houseOrVillage: z.string().min(2),
     roadOrPostOffice: z.string().min(2),

@@ -24,7 +24,7 @@ type LeanOrder = {
   _id: mongoose.Types.ObjectId;
   customer: {
     name: string;
-    email: string;
+   
     phone: string;
     
   };
@@ -43,7 +43,7 @@ type LeanOrder = {
 const OrderCreateDTO = z.object({
   customer: z.object({
     name: z.string().min(2),
-    email: z.string().email(),
+
     phone: z.string().min(6),
     
    
@@ -222,7 +222,7 @@ router.delete("/orders/:id", requireAdmin, async (req, res, next) => {
 // GET /customer/orders?phone=01XXXXXXXXX&page=1&limit=20
 const CustomerOrdersQuery = z.object({
   phone: z.string().min(6).optional(),
-  email: z.string().email().optional(),
+
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
@@ -232,13 +232,13 @@ router.get("/customer/orders", async (req, res, next) => {
     await dbConnect();
     const q = CustomerOrdersQuery.parse(req.query);
 
-    if (!q.phone && !q.email) {
+    if (!q.phone) {
       return res.status(400).json({ ok: false, message: "phone or email required" });
     }
 
     const filter: Record<string, unknown> = {};
     if (q.phone) filter["customer.phone"] = q.phone;
-    if (q.email) filter["customer.email"] = q.email;
+    
 
     const items = await Order.find(filter)
       .sort({ createdAt: -1 })

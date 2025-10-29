@@ -2,9 +2,13 @@ import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 const OrderSchema = new Schema({
     customer: {
-        name: String,
-        email: String,
-        phone: String,
+        name: { type: String, required: true },
+        email: { type: String, required: true },
+        phone: { type: String, required: true },
+        houseOrVillage: { type: String, required: true },
+        roadOrPostOffice: { type: String, required: true },
+        blockOrThana: { type: String, required: true },
+        district: { type: String, required: true },
     },
     lines: [
         {
@@ -29,12 +33,3 @@ const OrderSchema = new Schema({
 }, { timestamps: true });
 export const Order = models.Order ||
     model("Order", OrderSchema);
-customer: {
-    name: String;
-    email: String;
-    phone: String;
-    houseOrVillage: String;
-    roadOrPostOffice: String;
-    blockOrThana: String;
-    district: String;
-}
