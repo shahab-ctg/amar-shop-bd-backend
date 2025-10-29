@@ -3,7 +3,6 @@ const { Schema, model, models } = mongoose;
 const OrderSchema = new Schema({
     customer: {
         name: { type: String, required: true },
-        email: { type: String, required: true },
         phone: { type: String, required: true },
         houseOrVillage: { type: String, required: true },
         roadOrPostOffice: { type: String, required: true },
