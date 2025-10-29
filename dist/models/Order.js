@@ -5,8 +5,6 @@ const OrderSchema = new Schema({
         name: String,
         email: String,
         phone: String,
-        address: String,
-        area: String,
     },
     lines: [
         {
@@ -31,3 +29,12 @@ const OrderSchema = new Schema({
 }, { timestamps: true });
 export const Order = models.Order ||
     model("Order", OrderSchema);
+customer: {
+    name: String;
+    email: String;
+    phone: String;
+    houseOrVillage: String;
+    roadOrPostOffice: String;
+    blockOrThana: String;
+    district: String;
+}

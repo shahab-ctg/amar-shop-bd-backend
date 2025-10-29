@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
 export interface OrderLine {
-
   productId: mongoose.Types.ObjectId;
   title: string;
   image?: string;
@@ -16,7 +15,10 @@ export interface OrderDoc extends mongoose.Document {
     name: string;
     email: string;
     phone: string;
-   
+    houseOrVillage: string;
+    roadOrPostOffice: string;
+    blockOrThana: string;
+    district: string;
   };
   lines: OrderLine[];
   totals: { subTotal: number; shipping: number; grandTotal: number };
@@ -28,10 +30,13 @@ export interface OrderDoc extends mongoose.Document {
 const OrderSchema = new Schema<OrderDoc>(
   {
     customer: {
-      name: String,
-      email: String,
-      phone: String,
-     
+      name: { type: String, required: true },
+      email: { type: String, required: true },
+      phone: { type: String, required: true },
+      houseOrVillage: { type: String, required: true },
+      roadOrPostOffice: { type: String, required: true },
+      blockOrThana: { type: String, required: true },
+      district: { type: String, required: true },
     },
     lines: [
       {
@@ -60,15 +65,3 @@ const OrderSchema = new Schema<OrderDoc>(
 export const Order =
   (models.Order as mongoose.Model<OrderDoc>) ||
   model<OrderDoc>("Order", OrderSchema);
-
-customer: {
-  name: String;
-  email: String;
-  phone: String;
-  
-  
-  houseOrVillage: String;
-  roadOrPostOffice: String;
-  blockOrThana: String;
-  district: String;
-}

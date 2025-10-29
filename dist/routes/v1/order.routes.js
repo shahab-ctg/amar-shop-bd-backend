@@ -12,8 +12,10 @@ const OrderCreateDTO = z.object({
         name: z.string().min(2),
         email: z.string().email(),
         phone: z.string().min(6),
-        address: z.string().min(3),
-        area: z.string().min(2),
+        houseOrVillage: z.string().min(2),
+        roadOrPostOffice: z.string().min(2),
+        blockOrThana: z.string().min(2),
+        district: z.string().min(2),
     }),
     lines: z
         .array(z.object({
