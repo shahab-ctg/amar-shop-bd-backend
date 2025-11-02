@@ -53,12 +53,14 @@ app.use("/api/v1", products);
 app.use("/api/v1", orders);
 app.use("/api/v1", customerOrders);
 app.use("/api/v1", categories);
-app.use("/api/v1", uploads);
 app.use("/api/v1", banners);
+app.use("/api/v1", uploads);
+
+
+app.use("/api/v1/admin", adminBanners);
 app.use("/api/v1", adminAuth);
 app.use("/api/v1/admin", adminProducts);
 app.use("/api/v1/admin", adminCategories);
-app.use("/api/v1/admin", adminBanners);
 
 app.use((req, res) => res.status(404).json({ ok: false, code: "NOT_FOUND" }));
 app.use(errorMiddleware);

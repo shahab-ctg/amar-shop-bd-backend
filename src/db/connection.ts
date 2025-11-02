@@ -1,32 +1,42 @@
-
-
+// src/db/connection.ts
 import mongoose from "mongoose";
 import { env } from "../env.js";
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __mongooseConn: typeof mongoose | null;
+  // eslint-disable-next-line no-var
+  var __mongoosePromise: Promise<typeof mongoose> | null;
+}
 
-let conn: typeof mongoose | null = null;
-let connecting: Promise<typeof mongoose> | null = null;
+// global singletons (serverless/hot-reload safe)
+if (!global.__mongooseConn) global.__mongooseConn = null;
+if (!global.__mongoosePromise) global.__mongoosePromise = null;
 
-export  async function dbConnect(): Promise<typeof mongoose> {
-  if (conn) return conn;
+// safer defaults
+mongoose.set("strictQuery", true);
+mongoose.set("bufferCommands", false); // avoid silent query buffering
+
+export async function dbConnect(): Promise<typeof mongoose> {
+  // already connected
+  if (global.__mongooseConn && mongoose.connection.readyState === 1) {
+    return global.__mongooseConn;
+  }
 
   if (!env.MONGODB_URI) {
-    throw new Error("MongoDb Uri is missing. Check your env file");
+    throw new Error("❌ MongoDB URI missing. Check MONGODB_URI in env.");
   }
 
-  if (!connecting) {
-    connecting = mongoose
-      .connect(env.MONGODB_URI, {
-        dbName: env.MONGODB_DB || "shodaigram",
-      })
-      .then((m) => {
-        conn = m;
-        return m;
-      })
-      .finally(() => {
-        connecting = null;
-      });
+  // in-flight connect
+  if (!global.__mongoosePromise) {
+    global.__mongoosePromise = mongoose.connect(env.MONGODB_URI, {
+      dbName: env.MONGODB_DB || "AmarshopBD",
+      serverSelectionTimeoutMS: 20_000, // 20s
+      socketTimeoutMS: 45_000,
+      maxPoolSize: 10,
+    });
   }
 
-  return connecting;
+  global.__mongooseConn = await global.__mongoosePromise;
+  return global.__mongooseConn!;
 }

@@ -4,22 +4,22 @@ const { Schema, model, models } = mongoose;
 
 export interface BannerDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
-  image: string; // absolute/public URL
-  title: string;
-  subtitle: string;
-  discount?: string; // optional badge like "৩০% ছাড়"
-  status: "ACTIVE" | "HIDDEN";
-  sort: number; // smaller = higher priority
-  position?: "hero" | "side"; // 
+  image: string; 
+  title?: string;
+  subtitle?: string;
+  discount?: string; 
+  status?: "ACTIVE" | "HIDDEN";
+  sort?: number; 
+  position?: "hero" | "side";
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 const BannerSchema = new Schema<BannerDoc>(
   {
-    image: { type: String, required: true },
-    title: { type: String, required: true },
-    subtitle: { type: String, required: true },
+    image: { type: String  },
+    title: { type: String},
+    subtitle: { type: String },
     discount: { type: String },
     status: {
       type: String,
