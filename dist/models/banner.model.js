@@ -2,9 +2,9 @@
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 const BannerSchema = new Schema({
-    image: { type: String, required: true },
-    title: { type: String, required: true },
-    subtitle: { type: String, required: true },
+    image: { type: String },
+    title: { type: String },
+    subtitle: { type: String },
     discount: { type: String },
     status: {
         type: String,
