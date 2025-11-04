@@ -37,6 +37,7 @@ const OrderSchema = new Schema<OrderDoc>(
       roadOrPostOffice: { type: String, required: true },
       blockOrThana: { type: String, required: true },
       district: { type: String, required: true },
+      
     },
     lines: [
       {
@@ -60,7 +61,9 @@ const OrderSchema = new Schema<OrderDoc>(
     },
   },
   { timestamps: true }
+  
 );
+OrderSchema.index({ "customer.phone": 1 });
 
 export const Order =
   (models.Order as mongoose.Model<OrderDoc>) ||

@@ -1,146 +1,156 @@
-
-import { Router, Request, Response, NextFunction } from "express";
-import mongoose from "mongoose";
+// routes/v1/order.routes.js
+import { Router } from "express";
 import { z } from "zod";
+import { Types } from "mongoose";
 import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
-import requireAdmin from "../../middlewares/auth.js";
-
 
 const router = Router();
-const { Types } = mongoose;
 
-
-type LeanProductForOrder = {
-  _id: mongoose.Types.ObjectId;
-  title: string;
-  image?: string;
-  price: number;
-  stock?: number;
-};
-
-type LeanOrder = {
-  _id: mongoose.Types.ObjectId;
-  customer: {
-    name: string;
-   
-    phone: string;
-    
-  };
-  lines: {
-    productId: mongoose.Types.ObjectId;
-    title: string;
-    image?: string;
-    price: number;
-    qty: number;
-  }[];
-  totals: { subTotal: number; shipping: number; grandTotal: number };
-  status: "PENDING" | "IN_PROGRESS" | "IN_SHIPPING" | "DELIVERED" | "CANCELLED";
-  createdAt?: Date;
-};
-
-const OrderCreateDTO = z.object({
+const OrderCreatedDTO = z.object({
   customer: z.object({
     name: z.string().min(2),
-
     phone: z.string().min(6),
-    
-   
-    houseOrVillage: z.string().min(2), 
-    roadOrPostOffice: z.string().min(2), 
-    blockOrThana: z.string().min(2), 
-    district: z.string().min(2), 
+    houseOrVillage: z.string().min(2),
+    roadOrPostOffice: z.string().min(2),
+    blockOrThana: z.string().min(2),
+    district: z.string().min(2),
   }),
   lines: z
     .array(
       z.object({
-        productId: z.string(),
-        qty: z.number().int().positive(),
+        productId: z.string().min(1),
+        qty: z.coerce.number().int().positive(),
       })
     )
     .min(1),
 });
 
-router.post(
-  "/orders",
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      await dbConnect();
-      const body = OrderCreateDTO.parse(req.body);
-
-      const ids = body.lines.map((l) => l.productId);
-      const products = await Product.find({
-        _id: { $in: ids },
-        status: "ACTIVE",
-      }).lean<LeanProductForOrder[]>();
-
-      if (products.length !== body.lines.length) {
-        return res.status(404).json({ ok: false, code: "PRODUCT_MISSING" });
-      }
-
-      let subTotal = 0;
-      const lines = body.lines.map((l) => {
-        const p = products.find((d) => d._id.toString() === l.productId)!;
-        if ((p.stock ?? 0) < l.qty) {
-          return res
-            .status(409)
-            .json({ ok: false, code: "OUT_OF_STOCK", productId: l.productId });
-        }
-        subTotal += p.price * l.qty;
-        return {
-          productId: p._id,
-          title: p.title,
-          image: p.image,
-          price: p.price,
-          qty: l.qty,
-        };
-      });
-
-      const shipping = subTotal > 2000 ? 0 : 120;
-      const grandTotal = subTotal + shipping;
-
-      const order = await Order.create({
-        customer: body.customer,
-        lines,
-        totals: { subTotal, shipping, grandTotal },
-      });
-
-      return res.status(201).json({
-        ok: true,
-        data: {
-          id: order._id.toString(),
-          totals: order.totals,
-          status: order.status,
-        },
-      });
-    } catch (e) {
-      next(e);
-    }
-  }
-);
-
-const OrderListQuery = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(10),
-  status: z
-    .enum(["PENDING", "IN_PROGRESS", "IN_SHIPPING", "DELIVERED", "CANCELLED"])
-    .optional(),
-});
-
-router.get("/orders", requireAdmin, async (req, res, next) => {
+router.post("/orders", async (req, res, next) => {
   try {
     await dbConnect();
-    const q = OrderListQuery.parse(req.query);
-    const filter: Record<string, unknown> = {};
-    if (q.status) filter.status = q.status;
+    const payload = OrderCreatedDTO.parse(req.body);
+
+    const session = await Order.db.startSession();
+    session.startTransaction();
+
+    try {
+      const orderLines = [];
+      let subTotal = 0;
+
+      for (const line of payload.lines) {
+        if (!Types.ObjectId.isValid(line.productId)) {
+          throw {
+            status: 400,
+            message: `Invalid productId: ${line.productId}`,
+          };
+        }
+        const pid = new Types.ObjectId(line.productId);
+        const qty = Number(line.qty);
+
+        // Fetch product snapshot
+        const product = await Product.findOne({ _id: pid })
+          .session(session)
+          .lean();
+        if (!product) {
+          throw {
+            status: 404,
+            message: `Product not found: ${line.productId}`,
+          };
+        }
+
+        const available = Number(product.stock ?? 0);
+        if (available < qty) {
+          throw {
+            status: 409,
+            message: `Insufficient stock for "${product.title}". Available: ${available}, requested: ${qty}`,
+            productId: line.productId,
+          };
+        }
+
+        // Atomic decrement
+        const updateRes = await Product.updateOne(
+          { _id: pid, stock: { $gte: qty } },
+          { $inc: { stock: -qty } },
+          { session }
+        );
+
+        if (updateRes.modifiedCount === 0) {
+          throw {
+            status: 409,
+            message: `Failed to reserve stock for "${product.title}". Try again.`,
+            productId: line.productId,
+          };
+        }
+
+        const price = Number(product.price ?? 0);
+        orderLines.push({
+          productId: pid,
+          title: product.title ?? "Product",
+          image:
+            Array.isArray(product.images) && product.images[0]
+              ? product.images[0]
+              : product.image ?? undefined,
+          price,
+          qty,
+        });
+
+        subTotal += price * qty;
+      }
+
+      const shipping = 0;
+      const grandTotal = subTotal + shipping;
+
+      const createdArr = await Order.create(
+        [
+          {
+            customer: payload.customer,
+            lines: orderLines,
+            totals: { subTotal, shipping, grandTotal },
+            status: "PENDING",
+          },
+        ],
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      const orderDoc = createdArr[0].toObject();
+      orderDoc._id = orderDoc._id.toString();
+
+      return res.status(201).json({ ok: true, data: orderDoc });
+    } catch (inner) {
+      await session.abortTransaction();
+      session.endSession();
+      if (inner && inner.status)
+        return res
+          .status(inner.status)
+          .json({ ok: false, message: inner.message });
+      throw inner;
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/customer/orders", async (req, res, next) => {
+  try {
+    await dbConnect();
+    const phone =
+      typeof req.query.phone === "string" ? req.query.phone.trim() : null;
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 20)));
+
+    const filter = {};
+    if (phone) filter["customer.phone"] = phone;
 
     const items = await Order.find(filter)
       .sort({ createdAt: -1 })
-      .skip((q.page - 1) * q.limit)
-      .limit(q.limit)
-      .lean<LeanOrder[]>();
-
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
     const total = await Order.countDocuments(filter);
 
     return res.json({
@@ -148,119 +158,14 @@ router.get("/orders", requireAdmin, async (req, res, next) => {
       data: {
         items: items.map((o) => ({ ...o, _id: o._id.toString() })),
         total,
-        page: q.page,
-        limit: q.limit,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
       },
     });
   } catch (e) {
     next(e);
   }
 });
-
-const IdParam = z.object({
-  id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
-});
-
-router.get("/orders/:id", requireAdmin, async (req, res, next) => {
-  try {
-    await dbConnect();
-    const { id } = IdParam.parse(req.params);
-    const order = await Order.findById(id).lean<LeanOrder | null>();
-    if (!order) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
-    return res.json({
-      ok: true,
-      data: { ...order, _id: order._id.toString() },
-    });
-  } catch (e) {
-    next(e);
-  }
-});
-
-router.patch("/orders/:id", requireAdmin, async (req, res, next) => {
-  try {
-    await dbConnect();
-    const { id } = IdParam.parse(req.params);
-    const body = z
-      .object({
-        status: z.enum([
-          "PENDING",
-          "IN_PROGRESS",
-          "IN_SHIPPING",
-          "DELIVERED",
-          "CANCELLED",
-        ]),
-      })
-      .parse(req.body);
-
-    const order = await Order.findByIdAndUpdate(
-      id,
-      { status: body.status },
-      { new: true }
-    ).lean<LeanOrder | null>();
-    if (!order) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
-    return res.json({
-      ok: true,
-      data: { ...order, _id: order._id.toString() },
-    });
-  } catch (e) {
-    next(e);
-  }
-});
-
-router.delete("/orders/:id", requireAdmin, async (req, res, next) => {
-  try {
-    await dbConnect();
-    const { id } = IdParam.parse(req.params);
-    const out = await Order.findByIdAndDelete(id).lean<LeanOrder | null>();
-    if (!out) return res.status(404).json({ ok: false, code: "NOT_FOUND" });
-    return res.json({ ok: true, data: { id } });
-  } catch (e) {
-    next(e);
-  }
-});
-
-// GET /customer/orders?phone=01XXXXXXXXX&page=1&limit=20
-const CustomerOrdersQuery = z.object({
-  phone: z.string().min(6).optional(),
-
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
-});
-
-router.get("/customer/orders", async (req, res, next) => {
-  try {
-    await dbConnect();
-    const q = CustomerOrdersQuery.parse(req.query);
-
-    if (!q.phone) {
-      return res.status(400).json({ ok: false, message: "phone or email required" });
-    }
-
-    const filter: Record<string, unknown> = {};
-    if (q.phone) filter["customer.phone"] = q.phone;
-    
-
-    const items = await Order.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((q.page - 1) * q.limit)
-      .limit(q.limit)
-      .lean();
-
-    const total = await Order.countDocuments(filter);
-
-    return res.json({
-      ok: true,
-      data: {
-        items: items.map(o => ({ ...o, _id: o._id.toString() })),
-        total,
-        page: q.page,
-        limit: q.limit,
-      },
-    });
-  } catch (e) {
-    next(e);
-  }
-});
-
 
 export default router;
