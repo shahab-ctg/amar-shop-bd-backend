@@ -1,4 +1,4 @@
-// routes/v1/order.routes.js
+// routes/v1/order.routes.ts
 import { Router } from "express";
 import { z } from "zod";
 import { Types } from "mongoose";
@@ -32,44 +32,65 @@ router.post("/orders", async (req, res, next) => {
     await dbConnect();
     const payload = OrderCreatedDTO.parse(req.body);
 
+    // Start session/transaction
     const session = await Order.db.startSession();
     session.startTransaction();
 
     try {
-      const orderLines = [];
+      const orderLines: any[] = [];
       let subTotal = 0;
 
       for (const line of payload.lines) {
         if (!Types.ObjectId.isValid(line.productId)) {
-          throw {
-            status: 400,
-            message: `Invalid productId: ${line.productId}`,
-          };
+          return await session
+            .abortTransaction()
+            .then(() => session.endSession())
+            .then(() =>
+              res
+                .status(400)
+                .json({
+                  ok: false,
+                  message: `Invalid productId: ${line.productId}`,
+                })
+            );
         }
+
         const pid = new Types.ObjectId(line.productId);
         const qty = Number(line.qty);
 
-        // Fetch product snapshot
+        // Read product snapshot with the transaction session
         const product = await Product.findOne({ _id: pid })
           .session(session)
           .lean();
         if (!product) {
-          throw {
-            status: 404,
-            message: `Product not found: ${line.productId}`,
-          };
+          return await session
+            .abortTransaction()
+            .then(() => session.endSession())
+            .then(() =>
+              res
+                .status(404)
+                .json({
+                  ok: false,
+                  message: `Product not found: ${line.productId}`,
+                })
+            );
         }
 
         const available = Number(product.stock ?? 0);
         if (available < qty) {
-          throw {
-            status: 409,
-            message: `Insufficient stock for "${product.title}". Available: ${available}, requested: ${qty}`,
-            productId: line.productId,
-          };
+          return await session
+            .abortTransaction()
+            .then(() => session.endSession())
+            .then(() =>
+              res.status(409).json({
+                ok: false,
+                message: `Insufficient stock for "${product.title}". Available: ${available}, requested: ${qty}`,
+                productId: line.productId,
+              })
+            );
         }
 
-        // Atomic decrement
+        // Atomic decrement guard: update only if enough stock remains
         const updateRes = await Product.updateOne(
           { _id: pid, stock: { $gte: qty } },
           { $inc: { stock: -qty } },
@@ -77,21 +98,29 @@ router.post("/orders", async (req, res, next) => {
         );
 
         if (updateRes.modifiedCount === 0) {
-          throw {
-            status: 409,
-            message: `Failed to reserve stock for "${product.title}". Try again.`,
-            productId: line.productId,
-          };
+          return await session
+            .abortTransaction()
+            .then(() => session.endSession())
+            .then(() =>
+              res.status(409).json({
+                ok: false,
+                message: `Failed to reserve stock for "${product.title}". Try again.`,
+                productId: line.productId,
+              })
+            );
         }
 
         const price = Number(product.price ?? 0);
+        const productImage =
+          Array.isArray((product as any).images) &&
+          (product as any).images.length
+            ? (product as any).images[0]
+            : (product as any).image;
+
         orderLines.push({
           productId: pid,
           title: product.title ?? "Product",
-          image:
-            Array.isArray(product.images) && product.images[0]
-              ? product.images[0]
-              : product.image ?? undefined,
+          image: productImage,
           price,
           qty,
         });
@@ -118,23 +147,33 @@ router.post("/orders", async (req, res, next) => {
       session.endSession();
 
       const orderDoc = createdArr[0].toObject();
-      orderDoc._id = orderDoc._id.toString();
 
-      return res.status(201).json({ ok: true, data: orderDoc });
-    } catch (inner) {
+      const responseOrder = {
+        ...orderDoc,
+        _id: orderDoc._id.toString(),
+        lines: orderDoc.lines.map((line: any) => ({
+          ...line,
+          productId: line.productId.toString(),
+        })),
+      };
+
+      return res.status(201).json({ ok: true, data: responseOrder });
+    } catch (innerErr) {
       await session.abortTransaction();
       session.endSession();
-      if (inner && inner.status)
-        return res
-          .status(inner.status)
-          .json({ ok: false, message: inner.message });
-      throw inner;
+      // If innerErr is structured, return meaningful
+      if (innerErr && (innerErr as any).status) {
+        const s = innerErr as any;
+        return res.status(s.status).json({ ok: false, message: s.message });
+      }
+      return next(innerErr);
     }
   } catch (err) {
     next(err);
   }
 });
 
+// customer orders listing
 router.get("/customer/orders", async (req, res, next) => {
   try {
     await dbConnect();
@@ -143,7 +182,7 @@ router.get("/customer/orders", async (req, res, next) => {
     const page = Math.max(1, Number(req.query.page ?? 1));
     const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 20)));
 
-    const filter = {};
+    const filter: any = {};
     if (phone) filter["customer.phone"] = phone;
 
     const items = await Order.find(filter)
@@ -153,10 +192,19 @@ router.get("/customer/orders", async (req, res, next) => {
       .lean();
     const total = await Order.countDocuments(filter);
 
+    const formattedItems = items.map((order) => ({
+      ...order,
+      _id: order._id.toString(),
+      lines: order.lines.map((line: any) => ({
+        ...line,
+        productId: line.productId.toString(),
+      })),
+    }));
+
     return res.json({
       ok: true,
       data: {
-        items: items.map((o) => ({ ...o, _id: o._id.toString() })),
+        items: formattedItems,
         total,
         page,
         limit,

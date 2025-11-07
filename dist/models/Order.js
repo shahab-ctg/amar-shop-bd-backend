@@ -30,5 +30,6 @@ const OrderSchema = new Schema({
         index: true,
     },
 }, { timestamps: true });
+OrderSchema.index({ "customer.phone": 1 });
 export const Order = models.Order ||
     model("Order", OrderSchema);

@@ -1,13 +1,12 @@
+// routes/v1/order.routes.ts
 import { Router } from "express";
-import mongoose from "mongoose";
 import { z } from "zod";
+import { Types } from "mongoose";
 import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
-import requireAdmin from "../../middlewares/auth.js";
 const router = Router();
-const { Types } = mongoose;
-const OrderCreateDTO = z.object({
+const OrderCreatedDTO = z.object({
     customer: z.object({
         name: z.string().min(2),
         phone: z.string().min(6),
@@ -18,182 +17,140 @@ const OrderCreateDTO = z.object({
     }),
     lines: z
         .array(z.object({
-        productId: z.string(),
-        qty: z.number().int().positive(),
+        productId: z.string().min(1),
+        qty: z.coerce.number().int().positive(),
     }))
         .min(1),
 });
 router.post("/orders", async (req, res, next) => {
     try {
         await dbConnect();
-        const body = OrderCreateDTO.parse(req.body);
-        const ids = body.lines.map((l) => l.productId);
-        const products = await Product.find({
-            _id: { $in: ids },
-            status: "ACTIVE",
-        }).lean();
-        if (products.length !== body.lines.length) {
-            return res.status(404).json({ ok: false, code: "PRODUCT_MISSING" });
-        }
-        let subTotal = 0;
-        const lines = body.lines.map((l) => {
-            const p = products.find((d) => d._id.toString() === l.productId);
-            if ((p.stock ?? 0) < l.qty) {
-                return res
-                    .status(409)
-                    .json({ ok: false, code: "OUT_OF_STOCK", productId: l.productId });
+        const payload = OrderCreatedDTO.parse(req.body);
+        const session = await Order.db.startSession();
+        session.startTransaction();
+        try {
+            const orderLines = [];
+            let subTotal = 0;
+            for (const line of payload.lines) {
+                if (!Types.ObjectId.isValid(line.productId)) {
+                    throw {
+                        status: 400,
+                        message: `Invalid productId: ${line.productId}`,
+                    };
+                }
+                const pid = new Types.ObjectId(line.productId);
+                const qty = Number(line.qty);
+                // Fetch product snapshot
+                const product = await Product.findOne({ _id: pid })
+                    .session(session)
+                    .lean();
+                if (!product) {
+                    throw {
+                        status: 404,
+                        message: `Product not found: ${line.productId}`,
+                    };
+                }
+                const available = Number(product.stock ?? 0);
+                if (available < qty) {
+                    throw {
+                        status: 409,
+                        message: `Insufficient stock for "${product.title}". Available: ${available}, requested: ${qty}`,
+                        productId: line.productId,
+                    };
+                }
+                // Atomic decrement
+                const updateRes = await Product.updateOne({ _id: pid, stock: { $gte: qty } }, { $inc: { stock: -qty } }, { session });
+                if (updateRes.modifiedCount === 0) {
+                    throw {
+                        status: 409,
+                        message: `Failed to reserve stock for "${product.title}". Try again.`,
+                        productId: line.productId,
+                    };
+                }
+                const price = Number(product.price ?? 0);
+                // ✅ FIX 1: Use images array instead of image property
+                const productImage = Array.isArray(product.images) && product.images.length > 0
+                    ? product.images[0]
+                    : undefined;
+                orderLines.push({
+                    productId: pid,
+                    title: product.title ?? "Product",
+                    image: productImage, // ✅ FIXED: Use images array
+                    price,
+                    qty,
+                });
+                subTotal += price * qty;
             }
-            subTotal += p.price * l.qty;
-            return {
-                productId: p._id,
-                title: p.title,
-                image: p.image,
-                price: p.price,
-                qty: l.qty,
+            const shipping = 0;
+            const grandTotal = subTotal + shipping;
+            const createdArr = await Order.create([
+                {
+                    customer: payload.customer,
+                    lines: orderLines,
+                    totals: { subTotal, shipping, grandTotal },
+                    status: "PENDING",
+                },
+            ], { session });
+            await session.commitTransaction();
+            session.endSession();
+            const orderDoc = createdArr[0].toObject();
+            // ✅ FIX 2: Create new object instead of reassigning _id
+            const responseOrder = {
+                ...orderDoc,
+                _id: orderDoc._id.toString(), // ✅ FIXED: Create new object
+                lines: orderDoc.lines.map((line) => ({
+                    ...line,
+                    productId: line.productId.toString(),
+                })),
             };
-        });
-        const shipping = subTotal > 2000 ? 0 : 120;
-        const grandTotal = subTotal + shipping;
-        const order = await Order.create({
-            customer: body.customer,
-            lines,
-            totals: { subTotal, shipping, grandTotal },
-        });
-        return res.status(201).json({
-            ok: true,
-            data: {
-                id: order._id.toString(),
-                totals: order.totals,
-                status: order.status,
-            },
-        });
+            return res.status(201).json({ ok: true, data: responseOrder });
+        }
+        catch (inner) {
+            await session.abortTransaction();
+            session.endSession();
+            if (inner && inner.status)
+                return res
+                    .status(inner.status)
+                    .json({ ok: false, message: inner.message });
+            throw inner;
+        }
     }
-    catch (e) {
-        next(e);
+    catch (err) {
+        next(err);
     }
-});
-const OrderListQuery = z.object({
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(10),
-    status: z
-        .enum(["PENDING", "IN_PROGRESS", "IN_SHIPPING", "DELIVERED", "CANCELLED"])
-        .optional(),
-});
-router.get("/orders", requireAdmin, async (req, res, next) => {
-    try {
-        await dbConnect();
-        const q = OrderListQuery.parse(req.query);
-        const filter = {};
-        if (q.status)
-            filter.status = q.status;
-        const items = await Order.find(filter)
-            .sort({ createdAt: -1 })
-            .skip((q.page - 1) * q.limit)
-            .limit(q.limit)
-            .lean();
-        const total = await Order.countDocuments(filter);
-        return res.json({
-            ok: true,
-            data: {
-                items: items.map((o) => ({ ...o, _id: o._id.toString() })),
-                total,
-                page: q.page,
-                limit: q.limit,
-            },
-        });
-    }
-    catch (e) {
-        next(e);
-    }
-});
-const IdParam = z.object({
-    id: z.string().refine(Types.ObjectId.isValid, "Invalid ObjectId"),
-});
-router.get("/orders/:id", requireAdmin, async (req, res, next) => {
-    try {
-        await dbConnect();
-        const { id } = IdParam.parse(req.params);
-        const order = await Order.findById(id).lean();
-        if (!order)
-            return res.status(404).json({ ok: false, code: "NOT_FOUND" });
-        return res.json({
-            ok: true,
-            data: { ...order, _id: order._id.toString() },
-        });
-    }
-    catch (e) {
-        next(e);
-    }
-});
-router.patch("/orders/:id", requireAdmin, async (req, res, next) => {
-    try {
-        await dbConnect();
-        const { id } = IdParam.parse(req.params);
-        const body = z
-            .object({
-            status: z.enum([
-                "PENDING",
-                "IN_PROGRESS",
-                "IN_SHIPPING",
-                "DELIVERED",
-                "CANCELLED",
-            ]),
-        })
-            .parse(req.body);
-        const order = await Order.findByIdAndUpdate(id, { status: body.status }, { new: true }).lean();
-        if (!order)
-            return res.status(404).json({ ok: false, code: "NOT_FOUND" });
-        return res.json({
-            ok: true,
-            data: { ...order, _id: order._id.toString() },
-        });
-    }
-    catch (e) {
-        next(e);
-    }
-});
-router.delete("/orders/:id", requireAdmin, async (req, res, next) => {
-    try {
-        await dbConnect();
-        const { id } = IdParam.parse(req.params);
-        const out = await Order.findByIdAndDelete(id).lean();
-        if (!out)
-            return res.status(404).json({ ok: false, code: "NOT_FOUND" });
-        return res.json({ ok: true, data: { id } });
-    }
-    catch (e) {
-        next(e);
-    }
-});
-// GET /customer/orders?phone=01XXXXXXXXX&page=1&limit=20
-const CustomerOrdersQuery = z.object({
-    phone: z.string().min(6).optional(),
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(20),
 });
 router.get("/customer/orders", async (req, res, next) => {
     try {
         await dbConnect();
-        const q = CustomerOrdersQuery.parse(req.query);
-        if (!q.phone) {
-            return res.status(400).json({ ok: false, message: "phone or email required" });
-        }
+        const phone = typeof req.query.phone === "string" ? req.query.phone.trim() : null;
+        const page = Math.max(1, Number(req.query.page ?? 1));
+        const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 20)));
         const filter = {};
-        if (q.phone)
-            filter["customer.phone"] = q.phone;
+        if (phone)
+            filter["customer.phone"] = phone;
         const items = await Order.find(filter)
             .sort({ createdAt: -1 })
-            .skip((q.page - 1) * q.limit)
-            .limit(q.limit)
+            .skip((page - 1) * limit)
+            .limit(limit)
             .lean();
         const total = await Order.countDocuments(filter);
+        // ✅ FIXED: Create new objects instead of modifying original
+        const formattedItems = items.map((order) => ({
+            ...order,
+            _id: order._id.toString(),
+            lines: order.lines.map((line) => ({
+                ...line,
+                productId: line.productId.toString(),
+            })),
+        }));
         return res.json({
             ok: true,
             data: {
-                items: items.map(o => ({ ...o, _id: o._id.toString() })),
+                items: formattedItems, // ✅ Use formatted items
                 total,
-                page: q.page,
-                limit: q.limit,
+                page,
+                limit,
+                pages: Math.ceil(total / limit),
             },
         });
     }
