@@ -1,53 +1,23 @@
-// // src/models/Banner.ts
-// import mongoose from "mongoose";
-// const { Schema, model, models } = mongoose;
+// src/models/banner.model.ts
+import mongoose, { Document, Model } from "mongoose";
 
-// export interface BannerDoc extends mongoose.Document {
-//   _id: mongoose.Types.ObjectId;
-//   image: string; 
-//   title?: string;
-//   subtitle?: string;
-//   discount?: string; 
-//   status?: "ACTIVE" | "HIDDEN";
-//   sort?: number; 
-//   position?: "hero" | "side";
-//   createdAt?: Date;
-//   updatedAt?: Date;
-// }
-
-// const BannerSchema = new Schema<BannerDoc>(
-//   {
-//     image: { type: String  },
-//     title: { type: String},
-//     subtitle: { type: String },
-//     discount: { type: String },
-//     status: {
-//       type: String,
-//       enum: ["ACTIVE", "HIDDEN"],
-//       default: "ACTIVE",
-//       index: true,
-//     },
-//     sort: { type: Number, default: 100, index: true },
-//     position: {
-//       type: String,
-//       enum: ["hero", "side"],
-//       default: "hero",
-//       index: true,
-//     },
-//   },
-//   { timestamps: true }
-// );
-
-// BannerSchema.index({ position: 1, sort: 1, createdAt: -1 });
-
-// export const Banner =
-//   (models.Banner as mongoose.Model<BannerDoc>) ||
-//   model<BannerDoc>("Banner", BannerSchema);
-// models/Banner.js
-import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
-const BannerSchema = new Schema(
+export interface BannerDoc extends Document {
+  image: string;
+  title?: string;
+  subtitle?: string;
+  discount?: string;
+  position?: "hero" | "side";
+  status?: "ACTIVE" | "HIDDEN";
+  sort?: number;
+  link?: string;
+  categorySlug?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+const BannerSchema = new Schema<BannerDoc>(
   {
     image: { type: String, required: true },
     title: { type: String, default: "" },
@@ -57,12 +27,15 @@ const BannerSchema = new Schema(
     status: { type: String, enum: ["ACTIVE", "HIDDEN"], default: "ACTIVE" },
     sort: { type: Number, default: 0 },
     link: { type: String, default: "" },
-    categorySlug: { type: String, index: true, default: null }, // category-specific banner
+    categorySlug: { type: String, index: true, default: null },
   },
   { timestamps: true }
 );
 
 BannerSchema.index({ position: 1, categorySlug: 1, status: 1 });
 
-export const Banner =
-  (models.Banner as mongoose.Model<any>) || model("Banner", BannerSchema);
+// export typed model
+export const Banner: Model<BannerDoc> =
+  (models.Banner as Model<BannerDoc>) ||
+  model<BannerDoc>("Banner", BannerSchema);
+export default Banner;

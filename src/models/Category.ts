@@ -1,10 +1,11 @@
-
+// src/models/Category.ts
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 
 export interface CategoryDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
   name: string;
+  title?: string; // <-- add optional title
   slug: string;
   image?: string;
   description?: string;
@@ -13,9 +14,10 @@ export interface CategoryDoc extends mongoose.Document {
   updatedAt?: Date;
 }
 
-const CategorySchema = new Schema(
+const CategorySchema = new Schema<CategoryDoc>(
   {
     name: { type: String, required: true, unique: true, trim: true },
+    title: { type: String, default: "" }, // <-- add schema field
     slug: { type: String, required: true, unique: true, trim: true },
     image: { type: String, default: "" },
     description: { type: String, default: "" },
