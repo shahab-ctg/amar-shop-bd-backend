@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import bodyParser from "body-parser";
 
 import products from "./routes/v1/product.routes.js";
 import orders from "./routes/v1/order.routes.js";
@@ -15,6 +16,9 @@ import uploads from "./routes/v1/uploads.routes.js";
 import banners from "./routes/v1/banner.routes.js";
 import adminBanners from "./routes/v1/admin.banner.routes.js";
 import customerOrders from "./routes/v1/customer.orders.routes.js";
+
+import promoRouter from "./routes/v1/promocard.routes.js";
+import manufacturerRouter from "./routes/v1/manufacturer.routes.js";
 
 import { env } from "./env.js";
 import { errorMiddleware } from "./middlewares/error.js";
@@ -37,6 +41,7 @@ if (process.env.NODE_ENV === "production") {
   });
   app.use(limiter);
 }
+app.use(bodyParser.json({ limit: "1mb" }));
 
 
 
@@ -57,10 +62,13 @@ app.use("/api/v1", banners);
 app.use("/api/v1", uploads);
 
 
+
 app.use("/api/v1/admin", adminBanners);
 app.use("/api/v1", adminAuth);
 app.use("/api/v1/admin", adminProducts);
 app.use("/api/v1/admin", adminCategories);
+app.use("/api/v1/promocard", promoRouter);
+app.use("/api/v1/manufacturer-banners", manufacturerRouter);
 
 app.use((req, res) => res.status(404).json({ ok: false, code: "NOT_FOUND" }));
 app.use(errorMiddleware);

@@ -26,6 +26,7 @@ router.post("/orders", async (req, res, next) => {
     try {
         await dbConnect();
         const payload = OrderCreatedDTO.parse(req.body);
+        // Start session/transaction
         const session = await Order.db.startSession();
         session.startTransaction();
         try {
@@ -33,49 +34,65 @@ router.post("/orders", async (req, res, next) => {
             let subTotal = 0;
             for (const line of payload.lines) {
                 if (!Types.ObjectId.isValid(line.productId)) {
-                    throw {
-                        status: 400,
+                    return await session
+                        .abortTransaction()
+                        .then(() => session.endSession())
+                        .then(() => res
+                        .status(400)
+                        .json({
+                        ok: false,
                         message: `Invalid productId: ${line.productId}`,
-                    };
+                    }));
                 }
                 const pid = new Types.ObjectId(line.productId);
                 const qty = Number(line.qty);
-                // Fetch product snapshot
+                // Read product snapshot with the transaction session
                 const product = await Product.findOne({ _id: pid })
                     .session(session)
                     .lean();
                 if (!product) {
-                    throw {
-                        status: 404,
+                    return await session
+                        .abortTransaction()
+                        .then(() => session.endSession())
+                        .then(() => res
+                        .status(404)
+                        .json({
+                        ok: false,
                         message: `Product not found: ${line.productId}`,
-                    };
+                    }));
                 }
                 const available = Number(product.stock ?? 0);
                 if (available < qty) {
-                    throw {
-                        status: 409,
+                    return await session
+                        .abortTransaction()
+                        .then(() => session.endSession())
+                        .then(() => res.status(409).json({
+                        ok: false,
                         message: `Insufficient stock for "${product.title}". Available: ${available}, requested: ${qty}`,
                         productId: line.productId,
-                    };
+                    }));
                 }
-                // Atomic decrement
+                // Atomic decrement guard: update only if enough stock remains
                 const updateRes = await Product.updateOne({ _id: pid, stock: { $gte: qty } }, { $inc: { stock: -qty } }, { session });
                 if (updateRes.modifiedCount === 0) {
-                    throw {
-                        status: 409,
+                    return await session
+                        .abortTransaction()
+                        .then(() => session.endSession())
+                        .then(() => res.status(409).json({
+                        ok: false,
                         message: `Failed to reserve stock for "${product.title}". Try again.`,
                         productId: line.productId,
-                    };
+                    }));
                 }
                 const price = Number(product.price ?? 0);
-                // ✅ FIX 1: Use images array instead of image property
-                const productImage = Array.isArray(product.images) && product.images.length > 0
+                const productImage = Array.isArray(product.images) &&
+                    product.images.length
                     ? product.images[0]
-                    : undefined;
+                    : product.image;
                 orderLines.push({
                     productId: pid,
                     title: product.title ?? "Product",
-                    image: productImage, // ✅ FIXED: Use images array
+                    image: productImage,
                     price,
                     qty,
                 });
@@ -94,10 +111,9 @@ router.post("/orders", async (req, res, next) => {
             await session.commitTransaction();
             session.endSession();
             const orderDoc = createdArr[0].toObject();
-            // ✅ FIX 2: Create new object instead of reassigning _id
             const responseOrder = {
                 ...orderDoc,
-                _id: orderDoc._id.toString(), // ✅ FIXED: Create new object
+                _id: orderDoc._id.toString(),
                 lines: orderDoc.lines.map((line) => ({
                     ...line,
                     productId: line.productId.toString(),
@@ -105,20 +121,22 @@ router.post("/orders", async (req, res, next) => {
             };
             return res.status(201).json({ ok: true, data: responseOrder });
         }
-        catch (inner) {
+        catch (innerErr) {
             await session.abortTransaction();
             session.endSession();
-            if (inner && inner.status)
-                return res
-                    .status(inner.status)
-                    .json({ ok: false, message: inner.message });
-            throw inner;
+            // If innerErr is structured, return meaningful
+            if (innerErr && innerErr.status) {
+                const s = innerErr;
+                return res.status(s.status).json({ ok: false, message: s.message });
+            }
+            return next(innerErr);
         }
     }
     catch (err) {
         next(err);
     }
 });
+// customer orders listing
 router.get("/customer/orders", async (req, res, next) => {
     try {
         await dbConnect();
@@ -134,7 +152,6 @@ router.get("/customer/orders", async (req, res, next) => {
             .limit(limit)
             .lean();
         const total = await Order.countDocuments(filter);
-        // ✅ FIXED: Create new objects instead of modifying original
         const formattedItems = items.map((order) => ({
             ...order,
             _id: order._id.toString(),
@@ -146,7 +163,7 @@ router.get("/customer/orders", async (req, res, next) => {
         return res.json({
             ok: true,
             data: {
-                items: formattedItems, // ✅ Use formatted items
+                items: formattedItems,
                 total,
                 page,
                 limit,
