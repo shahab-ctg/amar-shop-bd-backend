@@ -1,6 +1,6 @@
 // import { Router } from "express";
 // import { Category } from "../../models/Category.js";
-// import { dbConnect } from "@/db/connection.js";
+// import { dbConnect } from "../../db/connection.js";
 // const router = Router();
 // router.get("/categories", async (_req, res) => {
 //   try {

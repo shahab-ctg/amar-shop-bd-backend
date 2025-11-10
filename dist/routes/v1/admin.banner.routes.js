@@ -1,11 +1,11 @@
-// routes/v1/admin.banner.routes.ts
+// src/routes/v1/admin.banner.routes.ts
 import { Router } from "express";
 import { z, ZodError } from "zod";
 import requireAdmin from "../../middlewares/auth.js";
 import { Banner } from "../../models/banner.model.js";
 import { dbConnect } from "../../db/connection.js";
 const router = Router();
-// "": undefined করতে helper (ফিল্ড দিলে string > 0 char, না দিলে undefined)
+// helper: convert empty-string -> undefined for optional trimmed strings
 const OptTrim = z.preprocess((v) => {
     if (typeof v === "string") {
         const t = v.trim();
@@ -21,12 +21,17 @@ const Body = z.object({
     status: z.enum(["ACTIVE", "HIDDEN"]).default("ACTIVE"),
     sort: z.coerce.number().int().min(0).default(100),
     position: z.enum(["hero", "side"]).default("hero"),
+    link: z.string().optional(),
+    categorySlug: z.string().optional().nullable(),
 });
 // GET /api/v1/admin/banners
 router.get("/banners", requireAdmin, async (_req, res, next) => {
     try {
         await dbConnect();
-        const list = await Banner.find().sort({ sort: 1, createdAt: -1 }).lean();
+        const list = await Banner.find()
+            .sort({ sort: 1, createdAt: -1 })
+            .lean()
+            .exec();
         return res.json({
             ok: true,
             data: list.map((b) => ({ ...b, id: String(b._id) })),
@@ -68,7 +73,8 @@ router.patch("/banners/:id", requireAdmin, async (req, res, next) => {
         const payload = Body.partial().parse(req.body);
         await Banner.findByIdAndUpdate(req.params.id, payload, {
             runValidators: true,
-        });
+            new: true,
+        }).exec();
         return res.json({ ok: true });
     }
     catch (e) {
@@ -90,7 +96,7 @@ router.patch("/banners/:id", requireAdmin, async (req, res, next) => {
 router.delete("/banners/:id", requireAdmin, async (req, res, next) => {
     try {
         await dbConnect();
-        await Banner.findByIdAndDelete(req.params.id);
+        await Banner.findByIdAndDelete(req.params.id).exec();
         return res.json({ ok: true });
     }
     catch (e) {

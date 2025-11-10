@@ -1,7 +1,9 @@
+// src/models/Category.ts
 import mongoose from "mongoose";
 const { Schema, model, models } = mongoose;
 const CategorySchema = new Schema({
     name: { type: String, required: true, unique: true, trim: true },
+    title: { type: String, default: "" }, // <-- add schema field
     slug: { type: String, required: true, unique: true, trim: true },
     image: { type: String, default: "" },
     description: { type: String, default: "" },

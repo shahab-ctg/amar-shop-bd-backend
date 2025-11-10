@@ -1,5 +1,5 @@
-import { dbConnect } from "@/db/connection";
-import { ManufacturerBanner } from "@/models/ManufacturerBanner";
+import { dbConnect } from "../../db/connection";
+import { ManufacturerBanner } from "../../models/ManufacturerBanner";
 import express from "express";
 import { z } from "zod";
 const router = express.Router();

@@ -19,14 +19,55 @@ import customerOrders from "./routes/v1/customer.orders.routes.js";
 
 import promoRouter from "./routes/v1/promocard.routes.js";
 import manufacturerRouter from "./routes/v1/manufacturer.routes.js";
+import publicInvoiceRouter from "./routes/v1/invoicePublic.routes.js";
+
 
 import { env } from "./env.js";
 import { errorMiddleware } from "./middlewares/error.js";
+import invoiceRouter from "./routes/v1/invoice.routes.js";
+
+
 
 const app = express();
+// replace current CORS configuration with this block
+const allowedOrigins = (env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-//  CORS
-app.use(cors({ origin: env.CORS_ORIGINS.split(","), credentials: true }));
+// safer origin checker: DO NOT throw; just disallow by returning false
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // allow requests with no origin (curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // do NOT throw an error here — tell cors to disallow the origin
+    return callback(null, false);
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  credentials: true,
+};
+
+// apply middleware
+app.use(cors(corsOptions));
+
+// Ensure preflight requests are handled without throwing
+app.options("*", (req, res) => {
+  // if origin is allowed, cors middleware will already set AC-Allow-* headers
+  // but to be sure, call cors with same options for preflight
+  cors(corsOptions)(req, res, () => {
+    // send empty success for OPTIONS
+    res.status(204).end();
+  });
+});
+
+
+app.options("*", cors(corsOptions));
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
@@ -61,8 +102,11 @@ app.use("/api/v1", categories);
 app.use("/api/v1", banners);
 app.use("/api/v1", uploads);
 
+app.use("/api/v1/invoices", publicInvoiceRouter);
 
 
+
+app.use("/api/v1/admin/invoices", invoiceRouter);
 app.use("/api/v1/admin", adminBanners);
 app.use("/api/v1", adminAuth);
 app.use("/api/v1/admin", adminProducts);
