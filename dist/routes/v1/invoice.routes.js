@@ -1,9 +1,9 @@
 // src/routes/v1/invoice.routes.ts
 import express from "express";
-import { InvoiceModel } from "../../models/Invoice.model";
+import { InvoiceModel } from "../../models/Invoice.model.js";
 import { Order } from "../../models/Order";
-import * as invoiceService from "../../services/invoice.service";
-import { requireAdmin } from "../../middlewares/auth";
+import * as invoiceService from "../../services/invoice.service.js";
+import { requireAdmin } from "../../middlewares/auth.js";
 const router = express.Router();
 /**
  * POST /api/v1/invoices/from-order

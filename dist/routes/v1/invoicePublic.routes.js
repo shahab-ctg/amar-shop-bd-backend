@@ -1,6 +1,6 @@
 // src/routes/public/invoicePublic.routes.ts
 import express from "express";
-import { InvoiceModel } from "../../models/Invoice.model";
+import { InvoiceModel } from "../../models/Invoice.model.js";
 const router = express.Router();
 router.get("/by-order/:orderId", async (req, res) => {
     try {

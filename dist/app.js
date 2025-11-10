@@ -22,8 +22,39 @@ import { env } from "./env.js";
 import { errorMiddleware } from "./middlewares/error.js";
 import invoiceRouter from "./routes/v1/invoice.routes.js";
 const app = express();
-//  CORS
-app.use(cors({ origin: env.CORS_ORIGINS.split(","), credentials: true }));
+// replace current CORS configuration with this block
+const allowedOrigins = (env.CORS_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+// safer origin checker: DO NOT throw; just disallow by returning false
+const corsOptions = {
+    origin: function (origin, callback) {
+        // allow requests with no origin (curl, server-to-server)
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // do NOT throw an error here — tell cors to disallow the origin
+        return callback(null, false);
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    credentials: true,
+};
+// apply middleware
+app.use(cors(corsOptions));
+// Ensure preflight requests are handled without throwing
+app.options("*", (req, res) => {
+    // if origin is allowed, cors middleware will already set AC-Allow-* headers
+    // but to be sure, call cors with same options for preflight
+    cors(corsOptions)(req, res, () => {
+        // send empty success for OPTIONS
+        res.status(204).end();
+    });
+});
+app.options("*", cors(corsOptions));
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));
