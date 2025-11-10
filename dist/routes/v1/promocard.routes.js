@@ -1,5 +1,5 @@
-import { Product } from "../../models/Product";
-import { PromoCard } from "../../models/PromoCard";
+import { Product } from "../../models/Product.js";
+import { PromoCard } from "../../models/PromoCard.js";
 import express from "express";
 import { z } from "zod";
 const router = express.Router();

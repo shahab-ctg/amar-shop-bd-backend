@@ -1,5 +1,5 @@
 
-import { dbConnect } from "@/db/connection";
+import { dbConnect } from "../../db/connection.js";
 import { ManufacturerBanner } from "../../models/ManufacturerBanner.js";
 import express from "express";
 import { z } from "zod";

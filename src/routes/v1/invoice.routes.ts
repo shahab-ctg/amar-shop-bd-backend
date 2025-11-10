@@ -1,7 +1,7 @@
 // src/routes/v1/invoice.routes.ts
 import express from "express";
 import { InvoiceModel } from "../../models/Invoice.model.js";
-import { Order } from "../../models/Order";
+import { Order } from "../../models/Order.js";
 import * as invoiceService from "../../services/invoice.service.js";
 import { requireAdmin } from "../../middlewares/auth.js";
 
