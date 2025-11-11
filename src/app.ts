@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 import bodyParser from "body-parser";
 
 import products from "./routes/v1/product.routes.js";
-import orders from "./routes/v1/order.routes.js";
+// import orders from "./routes/v1/order.routes.js";
 import health from "./routes/v1/health.routes.js";
 import categories from "./routes/v1/category.routes.js";
 import adminAuth from "./routes/v1/admin.auth.routes.js";
@@ -25,6 +25,9 @@ import publicInvoiceRouter from "./routes/v1/invoicePublic.routes.js";
 import { env } from "./env.js";
 import { errorMiddleware } from "./middlewares/error.js";
 import invoiceRouter from "./routes/v1/invoice.routes.js";
+import adminInvoicesRouter from "./routes/v1/adminInvoice.routes.js";
+import OrdersRouter from "./routes/v1/order.routes.js";
+
 
 
 
@@ -96,7 +99,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/v1", health);
 app.use("/api/v1", products);
-app.use("/api/v1", orders);
+// app.use("/api/v1", orders);
 app.use("/api/v1", customerOrders);
 app.use("/api/v1", categories);
 app.use("/api/v1", banners);
@@ -104,7 +107,10 @@ app.use("/api/v1", uploads);
 
 app.use("/api/v1/invoices", publicInvoiceRouter);
 
+app.use("/api/v1", OrdersRouter);
 
+
+app.use("/api/v1/admin/invoices", adminInvoicesRouter);
 
 app.use("/api/v1/admin/invoices", invoiceRouter);
 app.use("/api/v1/admin", adminBanners);
