@@ -1,21 +1,40 @@
+
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../env.js";
 
-//  make it a named export (TypeScript friendly)
+interface JwtPayloadCustom {
+  sub?: string;
+  userId?: string;
+  email?: string;
+  role?: string;
+  accountId?: string;
+  iat?: number;
+  exp?: number;
+}
+
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   try {
-    const header = req.headers.authorization;
-    if (!header || !header.startsWith("Bearer ")) {
+    const header = req.headers.authorization || "";
+    if (!header.startsWith("Bearer ")) {
       return res.status(401).json({ ok: false, code: "NO_TOKEN" });
     }
 
-    const token = header.split(" ")[1];
-    const decoded = jwt.verify(token, env.JWT_SECRET) as { role?: string };
+    const token = header.slice(7).trim();
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayloadCustom;
 
-    if (decoded.role !== "ADMIN") {
+    const role = decoded.role || "";
+    if (role !== "ADMIN" && role !== "SUPERADMIN") {
       return res.status(403).json({ ok: false, code: "FORBIDDEN" });
     }
+
+    // attach user for downstream routes
+    (req as any).user = {
+      _id: decoded.sub ?? decoded.userId,
+      email: decoded.email,
+      role: role,
+      accountId: decoded.accountId,
+    };
 
     next();
   } catch (err) {
@@ -23,5 +42,4 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// 👇 keep default export too so either syntax works
 export default requireAdmin;

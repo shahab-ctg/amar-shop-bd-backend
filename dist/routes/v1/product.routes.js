@@ -5,9 +5,6 @@ import { Product } from "../../models/Product.js";
 import { z } from "zod";
 import { validateQuery } from "../../middlewares/validate.js";
 const router = Router();
-/**
- * Query validation schema (Zod)
- */
 const ProductListQuery = z.object({
     page: z.coerce.number().int().positive().default(1),
     limit: z.coerce.number().int().positive().max(60).default(12),
@@ -15,41 +12,34 @@ const ProductListQuery = z.object({
     tag: z.string().optional(),
     q: z.string().optional(),
     discounted: z.enum(["true", "false"]).optional(),
-    sort: z.string().optional(), // e.g. price_asc, price_desc
+    sort: z.string().optional(),
 });
-/**
- * GET /api/v1/products
- * Public product listing with filters, pagination and sort.
- */
+// escape regex util to avoid special char issues (and ReDoS risks)
+function escapeRegex(input) {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 router.get("/products", validateQuery(ProductListQuery), async (req, res, next) => {
     try {
         await dbConnect();
-        // res.locals.query populated by validateQuery middleware
         const q = res.locals.query;
-        // base: only active products
         const filter = { status: "ACTIVE" };
-        // category (by slug)
         if (q.category)
             filter.categorySlug = q.category;
-        // tag filter
         if (q.tag) {
             if (q.tag !== "trending") {
                 filter.tagSlugs = { $in: [q.tag] };
             }
         }
-        // discounted filter
         if (q.discounted === "true")
             filter.isDiscounted = true;
-        // simple title text search
-        if (q.q)
-            filter.title = { $regex: q.q, $options: "i" };
-        // pagination
+        if (q.q) {
+            const safe = escapeRegex(q.q);
+            filter.title = { $regex: safe, $options: "i" };
+        }
         const page = Math.max(1, Number(q.page || 1));
         const limit = Math.max(1, Math.min(Number(q.limit || 12), 60));
-        // permissive sort type to satisfy TS (Mongo accepts numeric 1/-1)
         let sort = { createdAt: -1 };
         if (q.tag === "trending") {
-            // trending: salesCount desc, views desc, fallback createdAt desc
             sort = { salesCount: -1, views: -1, createdAt: -1 };
         }
         else if (q.sort === "price_asc") {
@@ -58,16 +48,20 @@ router.get("/products", validateQuery(ProductListQuery), async (req, res, next) 
         else if (q.sort === "price_desc") {
             sort = { price: -1 };
         }
-        // select projection (choose fields you want to return)
-        const projection = "_id title slug image images price compareAtPrice stock availableStock categorySlug status";
-        const items = await Product.find(filter)
-            .select(projection)
-            .sort(sort) // cast to any so TS won't complain, runtime is fine
-            .skip((page - 1) * limit)
-            .limit(limit)
-            .lean()
-            .exec();
-        const total = await Product.countDocuments(filter).exec();
+        const projection = "_id title slug image images price compareAtPrice stock availableStock categorySlug status createdAt";
+        // Run items query and count concurrently to reduce latency
+        const [items, total] = await Promise.all([
+            Product.find(filter)
+                .select(projection)
+                .sort(sort)
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .lean()
+                .exec(),
+            Product.countDocuments(filter).exec(),
+        ]);
+        // small public cache hint (optional, tune as needed)
+        res.set("Cache-Control", "public, max-age=30, s-maxage=30");
         res.json({
             ok: true,
             data: {
@@ -83,10 +77,6 @@ router.get("/products", validateQuery(ProductListQuery), async (req, res, next) 
         next(error);
     }
 });
-/**
- * GET /api/v1/products/:slug
- * Get single product by slug
- */
 router.get("/products/:slug", async (req, res, next) => {
     try {
         await dbConnect();
