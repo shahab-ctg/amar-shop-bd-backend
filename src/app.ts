@@ -27,6 +27,7 @@ import { errorMiddleware } from "./middlewares/error.js";
 import invoiceRouter from "./routes/v1/invoice.routes.js";
 import adminInvoicesRouter from "./routes/v1/adminInvoice.routes.js";
 import OrdersRouter from "./routes/v1/order.routes.js";
+import stockRouter from "./routes/v1/stock.routes.js";
 
 
 
@@ -119,6 +120,7 @@ app.use("/api/v1/admin", adminProducts);
 app.use("/api/v1/admin", adminCategories);
 app.use("/api/v1/promocard", promoRouter);
 app.use("/api/v1/manufacturer-banners", manufacturerRouter);
+app.use("/api/v1", stockRouter);
 
 app.use((req, res) => res.status(404).json({ ok: false, code: "NOT_FOUND" }));
 app.use(errorMiddleware);

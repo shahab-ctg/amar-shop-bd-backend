@@ -1,136 +1,171 @@
 // src/services/invoice.service.ts
+import mongoose from "mongoose";
 import { InvoiceModel } from "../models/Invoice.model.js";
-import { InvoiceSequenceModel } from "../models/Invoice-sequence.model.js";
-import { Types } from "mongoose";
-import { v4 as uuidv4 } from "uuid";
 /**
- * Invoice service (Mongoose + TS)
- * - getNextInvoiceNumber: upsert + $inc for per-account sequence
- * - createInvoice: compute totals + insert invoice doc
- * - getInvoice, listInvoices: simple read helpers
- *
- * Adjust field names if your models differ.
+ * NOTE:
+ * - We intentionally use `any` for dynamic imports / payloads to avoid TS casting errors
+ *   caused by mixed module export styles in runtime.
  */
-export async function getNextInvoiceNumber(accountId) {
-    const seq = await InvoiceSequenceModel.findOneAndUpdate({ accountId }, { $inc: { lastSequence: 1 } }, { new: true, upsert: true }).lean();
-    // defensive: if seq is null (shouldn't with upsert) handle gracefully
-    const lastSeq = seq?.lastSequence ?? 1;
-    const seqVal = String(lastSeq).padStart(6, "0");
-    const yyyymm = new Date().toISOString().slice(0, 7).replace("-", "");
-    return `INV-${accountId}-${yyyymm}-${seqVal}`;
+/** resolveOrder(orderOrId) */
+export async function resolveOrder(orderOrId) {
+    // import as any so TS won't complain about .default vs named export
+    const OrderModule = await import("../models/Order.js");
+    const Order = OrderModule?.Order ?? OrderModule?.default ?? OrderModule;
+    if (!Order || typeof Order.findOne !== "function") {
+        throw new Error("Order model not available");
+    }
+    // already an order object
+    if (orderOrId && typeof orderOrId === "object" && orderOrId._id) {
+        return orderOrId;
+    }
+    if (typeof orderOrId === "string") {
+        // 1) try ObjectId
+        if (mongoose.Types.ObjectId.isValid(orderOrId)) {
+            const ord = await Order.findById(orderOrId).lean();
+            if (ord)
+                return ord;
+        }
+        // 2) numeric fallback
+        const maybeNum = Number(orderOrId);
+        if (!Number.isNaN(maybeNum)) {
+            const ord = await Order.findOne({ orderId: maybeNum }).lean();
+            if (ord)
+                return ord;
+        }
+        // 3) string fallback
+        const ord = await Order.findOne({ orderId: String(orderOrId) }).lean();
+        if (ord)
+            return ord;
+        return null;
+    }
+    return null;
 }
-export async function createInvoice(accountId, payload, createdBy) {
-    const invoiceNumber = await getNextInvoiceNumber(accountId);
-    let subtotal = 0;
-    let taxTotal = 0;
-    const items = (payload.items || []).map((it) => {
-        const q = Number(it.quantity || 0);
-        const up = Number(it.unitPrice || 0);
-        const tp = Number(it.taxPercent || 0);
-        const line = +(q * up).toFixed(2);
-        const tax = +((line * tp) / 100).toFixed(2);
-        subtotal += line;
-        taxTotal += tax;
-        return {
-            description: it.description,
-            quantity: q,
-            unitPrice: up,
-            taxPercent: tp,
-            lineTotal: +(line + tax).toFixed(2),
-        };
-    });
-    const discount = Number(payload.discountAmount || 0);
-    const total = +(subtotal + taxTotal - discount).toFixed(2);
-    const doc = await InvoiceModel.create({
-        accountId: accountId ? new Types.ObjectId(accountId) : undefined,
-        invoiceNumber,
-        customerName: payload.customerName,
-        customerEmail: payload.customerEmail,
-        billingAddress: payload.billingAddress,
-        dueDate: payload.dueDate ? new Date(payload.dueDate) : undefined,
-        currency: payload.currency || "BDT",
-        notes: payload.notes,
-        subtotal,
-        taxTotal,
-        discountAmount: discount,
-        total,
-        createdBy: createdBy ? new Types.ObjectId(createdBy) : undefined,
-        items,
-        status: "draft",
-        pdfStatus: "none",
-    });
-    return doc.toObject();
-}
-export async function getInvoice(id) {
-    // allow either id string or ObjectId
-    return InvoiceModel.findById(id).lean();
-}
-export async function listInvoices(accountId, limit = 100) {
-    const query = {};
-    if (accountId) {
+/** createInvoiceFromOrder(orderOrId, createdBy) */
+export async function createInvoiceFromOrder(orderOrId, createdBy = "admin") {
+    const order = await resolveOrder(orderOrId);
+    if (!order)
+        throw new Error("order not found");
+    const safeObjectId = (val) => {
+        if (!val)
+            return undefined;
         try {
-            query.accountId = new Types.ObjectId(accountId);
+            if (mongoose.Types.ObjectId.isValid(String(val))) {
+                return new mongoose.Types.ObjectId(String(val));
+            }
         }
         catch (e) {
-            // if invalid id, fallback to string match (defensive)
-            query.accountId = accountId;
+            // ignore
+        }
+        return undefined;
+    };
+    const invoicePayload = {
+        ...(order.accountId ? { accountId: safeObjectId(order.accountId) } : {}),
+        ...(order._id ? { orderId: safeObjectId(order._id) } : {}),
+        invoiceNumber: String(order.invoiceNumber ?? `INV-${Date.now()}`),
+        customerContact: {
+            name: order.customer?.name ??
+                order.customerName ??
+                order.billing?.name ??
+                "Customer",
+            email: order.customer?.email ??
+                order.customerEmail ??
+                order.billing?.email ??
+                undefined,
+            phone: order.customer?.phone ??
+                order.customerPhone ??
+                order.billing?.phone ??
+                undefined,
+        },
+        items: Array.isArray(order.lines) && order.lines.length
+            ? order.lines.map((l) => ({
+                description: l.title ?? l.name ?? "Item",
+                quantity: l.qty ?? l.quantity ?? 1,
+                unitPrice: l.price ?? 0,
+                lineTotal: (l.price ?? 0) * (l.qty ?? l.quantity ?? 1),
+                productId: l.productId ? String(l.productId) : undefined,
+            }))
+            : [],
+        subtotal: order.totals?.subTotal ?? order.subTotal ?? 0,
+        taxTotal: order.totals?.tax ?? 0,
+        discountAmount: 0,
+        total: order.totals?.grandTotal ?? order.grandTotal ?? 0,
+        currency: order.currency ?? "BDT",
+        status: "draft",
+        ...(createdBy ? { createdBy: safeObjectId(createdBy) } : {}),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...(order.orderId && !mongoose.Types.ObjectId.isValid(String(order.orderId))
+            ? { orderRef: String(order.orderId) }
+            : {}),
+    };
+    const created = await InvoiceModel.create(invoicePayload);
+    return created.toObject ? created.toObject() : created;
+}
+/** listInvoices(accountId, limit) */
+export async function listInvoices(accountId, limit = 200) {
+    const filter = {};
+    if (accountId) {
+        if (mongoose.Types.ObjectId.isValid(String(accountId))) {
+            filter.accountId = new mongoose.Types.ObjectId(String(accountId));
+        }
+        else {
+            filter.accountId = String(accountId);
         }
     }
-    return InvoiceModel.find(query).sort({ createdAt: -1 }).limit(limit).lean();
+    const items = await InvoiceModel.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(Math.min(limit, 1000))
+        .lean();
+    const total = await InvoiceModel.countDocuments(filter);
+    return { items, total };
 }
-/**
- * Create invoice from an order document.
- * Reuses getNextInvoiceNumber and writes guestToken + orderId.
- */
-export async function createInvoiceFromOrder(order, createdBy) {
-    const items = (order.items || []).map((it) => {
-        const quantity = Number(it.quantity ?? it.qty ?? 1);
-        const unitPrice = Number(it.unitPrice ?? it.price ?? it.unit_price ?? 0);
-        const taxPercent = Number(it.taxPercent ?? 0);
-        const line = parseFloat((quantity * unitPrice).toFixed(2));
-        const tax = parseFloat(((line * taxPercent) / 100).toFixed(2));
-        return {
-            description: it.name ?? it.title ?? it.productName ?? "Item",
-            quantity,
-            unitPrice,
-            taxPercent,
-            lineTotal: parseFloat((line + tax).toFixed(2)),
-        };
-    });
-    const subtotal = items.reduce((s, it) => s + parseFloat((it.quantity * it.unitPrice).toFixed(2)), 0);
-    const taxTotal = items.reduce((s, it) => s +
-        parseFloat(((it.quantity * it.unitPrice * (it.taxPercent || 0)) / 100).toFixed(2)), 0);
-    const discountAmount = Number(order.discountAmount ?? 0);
-    const total = parseFloat((subtotal + taxTotal - discountAmount).toFixed(2));
-    const invoiceNumber = await getNextInvoiceNumber(String(order.accountId ?? (order.accountId || "1")));
-    const guestToken = uuidv4();
-    const customerContact = {
-        name: order.customerName ??
-            order.shipping?.name ??
-            order.billing?.name ??
-            undefined,
-        email: order.customerEmail ?? order.billing?.email ?? undefined,
-        phone: order.customerPhone ?? order.shipping?.phone ?? undefined,
+/** getInvoice(id) */
+export async function getInvoice(id) {
+    if (!id)
+        return null;
+    try {
+        if (mongoose.Types.ObjectId.isValid(String(id))) {
+            return await InvoiceModel.findById(String(id)).lean();
+        }
+        const found = await InvoiceModel.findOne({
+            $or: [{ invoiceNumber: String(id) }, { _id: String(id) }],
+        }).lean();
+        return found;
+    }
+    catch (e) {
+        console.warn("getInvoice error:", e?.message ?? e);
+        return null;
+    }
+}
+/** createInvoice(accountId, payload, createdBy) */
+export async function createInvoice(accountId, payload = {}, createdBy = "admin") {
+    const safeAccountId = mongoose.Types.ObjectId.isValid(String(accountId))
+        ? new mongoose.Types.ObjectId(String(accountId))
+        : String(accountId);
+    const doc = {
+        ...payload,
+        accountId: safeAccountId,
+        createdBy: mongoose.Types.ObjectId.isValid(String(createdBy))
+            ? new mongoose.Types.ObjectId(String(createdBy))
+            : String(createdBy),
+        createdAt: payload.createdAt ?? new Date(),
+        updatedAt: payload.updatedAt ?? new Date(),
     };
-    const doc = await InvoiceModel.create({
-        orderId: order._id ? new Types.ObjectId(order._id) : order._id,
-        accountId: order.accountId
-            ? new Types.ObjectId(order.accountId)
-            : undefined,
-        invoiceNumber,
-        guestToken,
-        customerContact,
-        items,
-        subtotal,
-        taxTotal,
-        discountAmount,
-        total,
-        status: "draft",
-        pdfStatus: "none",
-        createdBy: createdBy ? new Types.ObjectId(createdBy) : undefined,
-    });
-    return doc.toObject();
+    const created = await InvoiceModel.create(doc);
+    return created.toObject ? created.toObject() : created;
 }
+/** findInvoiceByGuestToken(token) */
 export async function findInvoiceByGuestToken(token) {
-    return InvoiceModel.findOne({ guestToken: token }).lean();
+    if (!token)
+        return null;
+    try {
+        const inv = await InvoiceModel.findOne({
+            guestToken: String(token),
+        }).lean();
+        return inv;
+    }
+    catch (e) {
+        console.warn("findInvoiceByGuestToken error:", e?.message ?? e);
+        return null;
+    }
 }

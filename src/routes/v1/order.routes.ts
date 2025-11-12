@@ -121,7 +121,8 @@ router.get("/orders", async (req, res) => {
     const search =
       typeof req.query.search === "string" ? req.query.search.trim() : null;
 
-    const filter = {};
+    // <-- make filter typed as any / Record so TS allows assigning properties
+    const filter: Record<string, any> = {};
     if (status) filter.status = status;
     if (search) {
       filter.$or = [
@@ -138,8 +139,7 @@ router.get("/orders", async (req, res) => {
 
     const total = await Order.countDocuments(filter);
 
-    const formatted = items.map((o) => ({
-      // spread all fields from the document (frontend uses many fields)
+    const formatted = items.map((o: any) => ({
       ...o,
       _id: String(o._id),
       lines: Array.isArray(o.lines)

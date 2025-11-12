@@ -1,22 +1,28 @@
 import jwt from "jsonwebtoken";
 import { env } from "../env.js";
-//  make it a named export (TypeScript friendly)
 export function requireAdmin(req, res, next) {
     try {
-        const header = req.headers.authorization;
-        if (!header || !header.startsWith("Bearer ")) {
+        const header = req.headers.authorization || "";
+        if (!header.startsWith("Bearer ")) {
             return res.status(401).json({ ok: false, code: "NO_TOKEN" });
         }
-        const token = header.split(" ")[1];
+        const token = header.slice(7).trim();
         const decoded = jwt.verify(token, env.JWT_SECRET);
-        if (decoded.role !== "ADMIN") {
+        const role = decoded.role || "";
+        if (role !== "ADMIN" && role !== "SUPERADMIN") {
             return res.status(403).json({ ok: false, code: "FORBIDDEN" });
         }
+        // attach user for downstream routes
+        req.user = {
+            _id: decoded.sub ?? decoded.userId,
+            email: decoded.email,
+            role: role,
+            accountId: decoded.accountId,
+        };
         next();
     }
     catch (err) {
         return res.status(401).json({ ok: false, code: "INVALID_TOKEN" });
     }
 }
-// 👇 keep default export too so either syntax works
 export default requireAdmin;
