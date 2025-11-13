@@ -1,16 +1,13 @@
-// src/routes/v1/order.routes.js
+// src/routes/v1/order.routes.ts
 import { Router } from "express";
 import mongoose from "mongoose";
 import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
+import type { IOrderDocument } from "../../types/mongoose.types.js";
 
 const router = Router();
 
-/**
- * POST /api/v1/orders
- * Creates an order and decrements stock inside a transaction.
- */
 router.post("/orders", async (req, res) => {
   console.log("📥 ORDER CREATION REQUEST RECEIVED:", {
     itemsCount: req.body.items?.length,
@@ -29,8 +26,7 @@ router.post("/orders", async (req, res) => {
         .json({ ok: false, message: "No items in order", code: "NO_ITEMS" });
     }
 
-    // Validate & normalize items
-    const validationErrors = [];
+    const validationErrors: string[] = [];
     const normalized = items.map((it, index) => {
       const _id = it._id || it.productId;
       const quantity = Math.max(1, Number(it.quantity || 1));
@@ -43,14 +39,12 @@ router.post("/orders", async (req, res) => {
     });
 
     if (validationErrors.length) {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          message: "Invalid items data",
-          errors: validationErrors,
-          code: "INVALID_ITEMS",
-        });
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid items data",
+        errors: validationErrors,
+        code: "INVALID_ITEMS",
+      });
     }
 
     const session = await mongoose.connection.startSession();
@@ -58,7 +52,7 @@ router.post("/orders", async (req, res) => {
       session.startTransaction();
 
       const updatedProducts = [];
-      const outOfStockItems = [];
+      const outOfStockItems: any[] = [];
 
       for (const it of normalized) {
         const product = await Product.findById(it._id).session(session);
@@ -95,17 +89,14 @@ router.post("/orders", async (req, res) => {
 
       if (outOfStockItems.length > 0) {
         await session.abortTransaction();
-        return res
-          .status(400)
-          .json({
-            ok: false,
-            message: "Some items are out of stock",
-            outOfStock: outOfStockItems,
-            code: "OUT_OF_STOCK",
-          });
+        return res.status(400).json({
+          ok: false,
+          message: "Some items are out of stock",
+          outOfStock: outOfStockItems,
+          code: "OUT_OF_STOCK",
+        });
       }
 
-      // Build order object (matches your Order model)
       const orderData = {
         customer: {
           name: req.body.customer?.name || "Customer",
@@ -126,12 +117,13 @@ router.post("/orders", async (req, res) => {
           };
         }),
         totals: req.body.totals || { subTotal: 0, shipping: 0, grandTotal: 0 },
-        status: "PENDING",
+        status: "PENDING" as const,
         payment: req.body.payment || {},
         notes: req.body.notes || "",
       };
 
-      const created = await Order.create([orderData], { session });
+      // Fix: Use type assertion for create()
+      const created = await (Order as any).create([orderData], { session });
       await session.commitTransaction();
 
       return res.json({
@@ -158,10 +150,6 @@ router.post("/orders", async (req, res) => {
   }
 });
 
-/**
- * GET /api/v1/orders
- * Generic listing with search/status pagination.
- */
 router.get("/orders", async (req, res) => {
   try {
     await dbConnect();
@@ -173,8 +161,7 @@ router.get("/orders", async (req, res) => {
     const search =
       typeof req.query.search === "string" ? req.query.search.trim() : null;
 
-    /** @type {any} */
-    const filter = {};
+    const filter: Record<string, any> = {};
     if (status) filter.status = status;
     if (search) {
       filter.$or = [
@@ -184,15 +171,17 @@ router.get("/orders", async (req, res) => {
       ];
     }
 
-    const items = await Order.find(filter)
+    // Fix: Use type assertion for find()
+    const items = await (Order as any)
+      .find(filter)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
 
-    const total = await Order.countDocuments(filter);
+    const total = await (Order as any).countDocuments(filter);
 
-    const formatted = items.map((o) => ({
+    const formatted = items.map((o: IOrderDocument) => ({
       ...o,
       _id: String(o._id),
       lines: Array.isArray(o.lines)
@@ -220,10 +209,6 @@ router.get("/orders", async (req, res) => {
   }
 });
 
-/**
- * GET /api/v1/customer/orders?phone=...
- * Return orders for a customer phone. (Used by frontend useCustomerOrders)
- */
 router.get("/customer/orders", async (req, res) => {
   try {
     await dbConnect();
@@ -234,12 +219,14 @@ router.get("/customer/orders", async (req, res) => {
 
     const limit = Math.min(200, Math.max(1, Number(req.query.limit ?? 50)));
 
-    const items = await Order.find({ "customer.phone": phone })
+    // Fix: Use type assertion for find()
+    const items = await (Order as any)
+      .find({ "customer.phone": phone })
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
 
-    const formatted = items.map((o) => ({
+    const formatted = items.map((o: IOrderDocument) => ({
       ...o,
       _id: String(o._id),
       lines: Array.isArray(o.lines)
@@ -260,14 +247,13 @@ router.get("/customer/orders", async (req, res) => {
   }
 });
 
-/**
- * Debug: recent orders (limited to 10)
- */
 router.get("/debug/recent-orders", async (req, res) => {
   try {
     await dbConnect();
 
-    const recentOrders = await Order.find({})
+    // Fix: Use type assertion for find()
+    const recentOrders = await (Order as any)
+      .find({})
       .select(
         "_id customer.createdAt customer.phone customer.name createdAt status lines"
       )
@@ -275,7 +261,7 @@ router.get("/debug/recent-orders", async (req, res) => {
       .limit(10)
       .lean();
 
-    const formatted = recentOrders.map((order) => ({
+    const formatted = recentOrders.map((order: IOrderDocument) => ({
       _id: String(order._id),
       customerPhone: order.customer?.phone || null,
       customerName: order.customer?.name || null,
@@ -290,7 +276,7 @@ router.get("/debug/recent-orders", async (req, res) => {
         ) + " hours",
     }));
 
-    const total = await Order.countDocuments({});
+    const total = await (Order as any).countDocuments({});
 
     return res.json({
       ok: true,

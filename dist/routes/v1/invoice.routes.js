@@ -5,15 +5,12 @@ import { Order } from "../../models/Order.js";
 import * as invoiceService from "../../services/invoice.service.js";
 import { requireAdmin } from "../../middlewares/auth.js";
 const router = express.Router();
-/**
- * POST /api/v1/invoices/from-order
- * Admin only
- */
 router.post("/from-order", requireAdmin, async (req, res) => {
     try {
         const { orderId } = req.body;
         if (!orderId)
             return res.status(400).json({ ok: false, error: "orderId required" });
+        // Fix: Use type assertion for findById()
         const order = await Order.findById(orderId).lean();
         if (!order)
             return res.status(404).json({ ok: false, error: "order not found" });
@@ -25,10 +22,6 @@ router.post("/from-order", requireAdmin, async (req, res) => {
         return res.status(500).json({ ok: false, error: err.message });
     }
 });
-/**
- * GET /api/v1/invoices/by-order/:orderId
- * Public read by orderId
- */
 router.get("/by-order/:orderId", async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -42,9 +35,6 @@ router.get("/by-order/:orderId", async (req, res) => {
         return res.status(500).json({ ok: false, error: "Server error" });
     }
 });
-/**
- * GET /api/v1/invoices/guest/:token
- */
 router.get("/guest/:token", async (req, res) => {
     try {
         const { token } = req.params;

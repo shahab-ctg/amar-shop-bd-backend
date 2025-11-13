@@ -29,7 +29,7 @@ import adminInvoicesRouter from "./routes/v1/adminInvoice.routes.js";
 import OrdersRouter from "./routes/v1/order.routes.js";
 import stockRouter from "./routes/v1/stock.routes.js";
 
-import invoicePdfRoutes from "./routes/v1/invoicePdf.routes";
+import invoicePdfRoutes from "./routes/v1/invoicePdf.routes.js";
 
 
 const app = express();

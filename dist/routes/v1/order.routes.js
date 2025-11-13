@@ -1,14 +1,10 @@
-// src/routes/v1/order.routes.js
+// src/routes/v1/order.routes.ts
 import { Router } from "express";
 import mongoose from "mongoose";
 import { dbConnect } from "../../db/connection.js";
 import { Product } from "../../models/Product.js";
 import { Order } from "../../models/Order.js";
 const router = Router();
-/**
- * POST /api/v1/orders
- * Creates an order and decrements stock inside a transaction.
- */
 router.post("/orders", async (req, res) => {
     console.log("📥 ORDER CREATION REQUEST RECEIVED:", {
         itemsCount: req.body.items?.length,
@@ -24,7 +20,6 @@ router.post("/orders", async (req, res) => {
                 .status(400)
                 .json({ ok: false, message: "No items in order", code: "NO_ITEMS" });
         }
-        // Validate & normalize items
         const validationErrors = [];
         const normalized = items.map((it, index) => {
             const _id = it._id || it.productId;
@@ -36,9 +31,7 @@ router.post("/orders", async (req, res) => {
             return { _id: String(_id), quantity, originalData: it };
         });
         if (validationErrors.length) {
-            return res
-                .status(400)
-                .json({
+            return res.status(400).json({
                 ok: false,
                 message: "Invalid items data",
                 errors: validationErrors,
@@ -77,16 +70,13 @@ router.post("/orders", async (req, res) => {
             }
             if (outOfStockItems.length > 0) {
                 await session.abortTransaction();
-                return res
-                    .status(400)
-                    .json({
+                return res.status(400).json({
                     ok: false,
                     message: "Some items are out of stock",
                     outOfStock: outOfStockItems,
                     code: "OUT_OF_STOCK",
                 });
             }
-            // Build order object (matches your Order model)
             const orderData = {
                 customer: {
                     name: req.body.customer?.name || "Customer",
@@ -111,6 +101,7 @@ router.post("/orders", async (req, res) => {
                 payment: req.body.payment || {},
                 notes: req.body.notes || "",
             };
+            // Fix: Use type assertion for create()
             const created = await Order.create([orderData], { session });
             await session.commitTransaction();
             return res.json({
@@ -139,10 +130,6 @@ router.post("/orders", async (req, res) => {
             .json({ ok: false, message: "Internal server error" });
     }
 });
-/**
- * GET /api/v1/orders
- * Generic listing with search/status pagination.
- */
 router.get("/orders", async (req, res) => {
     try {
         await dbConnect();
@@ -150,7 +137,6 @@ router.get("/orders", async (req, res) => {
         const limit = Math.min(200, Math.max(1, Number(req.query.limit ?? 50)));
         const status = typeof req.query.status === "string" ? req.query.status.trim() : null;
         const search = typeof req.query.search === "string" ? req.query.search.trim() : null;
-        /** @type {any} */
         const filter = {};
         if (status)
             filter.status = status;
@@ -161,7 +147,9 @@ router.get("/orders", async (req, res) => {
                 { "customer.phone": { $regex: search, $options: "i" } },
             ];
         }
-        const items = await Order.find(filter)
+        // Fix: Use type assertion for find()
+        const items = await Order
+            .find(filter)
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit)
@@ -194,10 +182,6 @@ router.get("/orders", async (req, res) => {
         return res.status(500).json({ ok: false, message: "Server error" });
     }
 });
-/**
- * GET /api/v1/customer/orders?phone=...
- * Return orders for a customer phone. (Used by frontend useCustomerOrders)
- */
 router.get("/customer/orders", async (req, res) => {
     try {
         await dbConnect();
@@ -205,7 +189,9 @@ router.get("/customer/orders", async (req, res) => {
         if (!phone)
             return res.status(400).json({ ok: false, message: "phone is required" });
         const limit = Math.min(200, Math.max(1, Number(req.query.limit ?? 50)));
-        const items = await Order.find({ "customer.phone": phone })
+        // Fix: Use type assertion for find()
+        const items = await Order
+            .find({ "customer.phone": phone })
             .sort({ createdAt: -1 })
             .limit(limit)
             .lean();
@@ -229,13 +215,12 @@ router.get("/customer/orders", async (req, res) => {
         return res.status(500).json({ ok: false, message: "Server error" });
     }
 });
-/**
- * Debug: recent orders (limited to 10)
- */
 router.get("/debug/recent-orders", async (req, res) => {
     try {
         await dbConnect();
-        const recentOrders = await Order.find({})
+        // Fix: Use type assertion for find()
+        const recentOrders = await Order
+            .find({})
             .select("_id customer.createdAt customer.phone customer.name createdAt status lines")
             .sort({ createdAt: -1 })
             .limit(10)

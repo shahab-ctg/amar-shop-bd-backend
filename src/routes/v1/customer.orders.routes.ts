@@ -1,37 +1,28 @@
+// src/routes/v1/customer.orders.routes.ts
 import { Router } from "express";
 import { z } from "zod";
-
 import { dbConnect } from "../../db/connection.js";
 import { Order } from "../../models/Order.js";
-
-
-
+import type { IOrderDocument } from "../../types/mongoose.types.js";
 
 const router = Router();
-
-
-// Get orders for logged-in customer
 
 const OrderListQuery = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(50).default(20),
-  phone: z.string().optional(), // ✅ ADD phone filter
+  phone: z.string().optional(),
 });
 
-// Get orders for specific customer by phone
 router.get("/customer/orders", async (req, res, next) => {
   try {
     await dbConnect();
 
     const q = OrderListQuery.parse(req.query);
-
-    // ✅ BUILD FILTER BASED ON PHONE
-    const filter = {};
+    const filter: Record<string, any> = {};
 
     if (q.phone) {
       filter["customer.phone"] = q.phone;
     } else {
-      // If no phone provided, return empty or handle accordingly
       return res.json({
         ok: true,
         data: {
@@ -46,16 +37,17 @@ router.get("/customer/orders", async (req, res, next) => {
 
     console.log("🔍 Fetching orders for phone:", q.phone, "Filter:", filter);
 
-    const items = await Order.find(filter)
+    // Fix: Use proper typing for find()
+    const items = await (Order as any)
+      .find(filter)
       .sort({ createdAt: -1 })
       .skip((q.page - 1) * q.limit)
       .limit(q.limit)
       .lean();
 
-    const total = await Order.countDocuments(filter);
+    const total = await (Order as any).countDocuments(filter);
 
-    // ✅ BETTER ORDER FORMATTING
-    const formattedItems = items.map((order) => ({
+    const formattedItems = items.map((order: IOrderDocument) => ({
       ...order,
       _id: order._id.toString(),
       customer: order.customer || {},
