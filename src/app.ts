@@ -29,7 +29,7 @@ import adminInvoicesRouter from "./routes/v1/adminInvoice.routes.js";
 import OrdersRouter from "./routes/v1/order.routes.js";
 import stockRouter from "./routes/v1/stock.routes.js";
 
-
+import invoicePdfRoutes from "./routes/v1/invoicePdf.routes";
 
 
 const app = express();
@@ -111,6 +111,11 @@ app.use("/api/v1/invoices", publicInvoiceRouter);
 app.use("/api/v1", OrdersRouter);
 
 
+// src/app.ts বা index.ts-এ
+
+
+// অন্য routes-এর সাথে add করুন
+app.use("/api/v1", invoicePdfRoutes);
 app.use("/api/v1/admin/invoices", adminInvoicesRouter);
 
 app.use("/api/v1/admin/invoices", invoiceRouter);

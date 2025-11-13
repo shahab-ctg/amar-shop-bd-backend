@@ -19,7 +19,7 @@ async function ensureDb() {
  * - Tries three strategies: ObjectId, numeric orderId, string orderId
  * - Always catches errors and logs them; never crashes process
  */
-router.get("/by-order/:orderId", async (req, res) => {
+router.get("/invoices/by-order/:orderId", async (req, res) => {
     try {
         await ensureDb();
         const { orderId } = req.params;

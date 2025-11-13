@@ -3,36 +3,30 @@ import mongoose from "mongoose";
 import { InvoiceModel } from "../models/Invoice.model.js";
 /**
  * NOTE:
- * - We intentionally use `any` for dynamic imports / payloads to avoid TS casting errors
- *   caused by mixed module export styles in runtime.
+ * - Use `any` for dynamic imports/payloads to avoid TS casting errors caused by mixed module export styles.
  */
 /** resolveOrder(orderOrId) */
 export async function resolveOrder(orderOrId) {
-    // import as any so TS won't complain about .default vs named export
     const OrderModule = await import("../models/Order.js");
     const Order = OrderModule?.Order ?? OrderModule?.default ?? OrderModule;
     if (!Order || typeof Order.findOne !== "function") {
         throw new Error("Order model not available");
     }
-    // already an order object
     if (orderOrId && typeof orderOrId === "object" && orderOrId._id) {
         return orderOrId;
     }
     if (typeof orderOrId === "string") {
-        // 1) try ObjectId
         if (mongoose.Types.ObjectId.isValid(orderOrId)) {
             const ord = await Order.findById(orderOrId).lean();
             if (ord)
                 return ord;
         }
-        // 2) numeric fallback
         const maybeNum = Number(orderOrId);
         if (!Number.isNaN(maybeNum)) {
             const ord = await Order.findOne({ orderId: maybeNum }).lean();
             if (ord)
                 return ord;
         }
-        // 3) string fallback
         const ord = await Order.findOne({ orderId: String(orderOrId) }).lean();
         if (ord)
             return ord;
