@@ -24,6 +24,7 @@ import invoiceRouter from "./routes/v1/invoice.routes.js";
 import adminInvoicesRouter from "./routes/v1/adminInvoice.routes.js";
 import OrdersRouter from "./routes/v1/order.routes.js";
 import stockRouter from "./routes/v1/stock.routes.js";
+import invoicePdfRoutes from "./routes/v1/invoicePdf.routes";
 const app = express();
 // replace current CORS configuration with this block
 const allowedOrigins = (env.CORS_ORIGINS || "")
@@ -89,6 +90,9 @@ app.use("/api/v1", banners);
 app.use("/api/v1", uploads);
 app.use("/api/v1/invoices", publicInvoiceRouter);
 app.use("/api/v1", OrdersRouter);
+// src/app.ts বা index.ts-এ
+// অন্য routes-এর সাথে add করুন
+app.use("/api/v1", invoicePdfRoutes);
 app.use("/api/v1/admin/invoices", adminInvoicesRouter);
 app.use("/api/v1/admin/invoices", invoiceRouter);
 app.use("/api/v1/admin", adminBanners);

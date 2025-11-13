@@ -1,7 +1,7 @@
 // src/routes/v1/public/banners.ts
 import { Router } from "express";
 import { dbConnect } from "../../db/connection.js";
-import { Banner } from "../../models/banner.model.js";
+import { Banner } from "@/models/banner.model.js";
 import { z } from "zod";
 const router = Router();
 const BannerQuery = z.object({
