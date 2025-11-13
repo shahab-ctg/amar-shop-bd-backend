@@ -1,6 +1,6 @@
 // src/models/Order.ts
 import { Schema, model } from "mongoose";
-import type { IOrderDocument, IOrderModel } from "../types/mongoose.types";
+import type { IOrderDocument, IOrderModel } from "../types/mongoose.types.js";
 
 const orderSchema = new Schema<IOrderDocument>(
   {
