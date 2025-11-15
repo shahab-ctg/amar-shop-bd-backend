@@ -9,35 +9,35 @@ const router = Router();
 
 const OrderListQuery = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(50).default(20),
-  phone: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(200).default(50),
+  phone: z.string().min(1).optional(),
 });
 
-router.get("/customer/orders", async (req, res, next) => {
+router.get("/customer/orders", async (req, res) => {
   try {
     await dbConnect();
 
-    const q = OrderListQuery.parse(req.query);
-    const filter: Record<string, any> = {};
+    const parsed = OrderListQuery.safeParse(req.query);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          message: "Invalid query",
+          errors: parsed.error.format(),
+        });
+    }
+    const q = parsed.data;
 
-    if (q.phone) {
-      filter["customer.phone"] = q.phone;
-    } else {
+    if (!q.phone) {
       return res.json({
         ok: true,
-        data: {
-          items: [],
-          total: 0,
-          page: q.page,
-          limit: q.limit,
-          pages: 0,
-        },
+        data: { items: [], total: 0, page: q.page, limit: q.limit, pages: 0 },
       });
     }
 
-    console.log("🔍 Fetching orders for phone:", q.phone, "Filter:", filter);
+    const filter: Record<string, any> = { "customer.phone": q.phone };
 
-    // Fix: Use proper typing for find()
     const items = await (Order as any)
       .find(filter)
       .sort({ createdAt: -1 })
@@ -49,14 +49,12 @@ router.get("/customer/orders", async (req, res, next) => {
 
     const formattedItems = items.map((order: IOrderDocument) => ({
       ...order,
-      _id: order._id.toString(),
+      _id: String(order._id),
       customer: order.customer || {},
       lines: Array.isArray(order.lines)
         ? order.lines.map((line) => ({
             ...line,
-            productId: line.productId
-              ? line.productId.toString()
-              : line.productId,
+            productId: line.productId ? String(line.productId) : line.productId,
           }))
         : [],
       totals: order.totals || { subTotal: 0, shipping: 0, grandTotal: 0 },
@@ -76,8 +74,8 @@ router.get("/customer/orders", async (req, res, next) => {
       },
     });
   } catch (e) {
-    console.error("❌ Customer orders error:", e);
-    next(e);
+    console.error("GET /customer/orders error:", e);
+    return res.status(500).json({ ok: false, message: "Server error" });
   }
 });
 

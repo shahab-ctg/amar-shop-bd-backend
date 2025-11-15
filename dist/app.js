@@ -90,7 +90,6 @@ app.use("/api/v1", banners);
 app.use("/api/v1", uploads);
 app.use("/api/v1/invoices", publicInvoiceRouter);
 app.use("/api/v1", OrdersRouter);
-// src/app.ts বা index.ts-এ
 // অন্য routes-এর সাথে add করুন
 app.use("/api/v1", invoicePdfRoutes);
 app.use("/api/v1/admin/invoices", adminInvoicesRouter);
