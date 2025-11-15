@@ -26,39 +26,46 @@ import OrdersRouter from "./routes/v1/order.routes.js";
 import stockRouter from "./routes/v1/stock.routes.js";
 import invoicePdfRoutes from "./routes/v1/invoicePdf.routes.js";
 const app = express();
-// replace current CORS configuration with this block
+// replace existing corsOptions block with this
 const allowedOrigins = (env.CORS_ORIGINS || "")
     .split(",")
     .map((o) => o.trim())
     .filter(Boolean);
-// safer origin checker: DO NOT throw; just disallow by returning false
+console.log("CORS allowed origins:", allowedOrigins);
 const corsOptions = {
     origin: function (origin, callback) {
-        // allow requests with no origin (curl, server-to-server)
         if (!origin)
             return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
+        if (allowedOrigins.includes(origin))
             return callback(null, true);
-        }
-        // do NOT throw an error here — tell cors to disallow the origin
         return callback(null, false);
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    allowedHeaders: [
+        "Content-Type",
+        "Accept",
+        "Authorization",
+        "X-Requested-With",
+        "X-Idempotency-Key",
+        "X-Request-Id",
+    ],
+    exposedHeaders: ["X-Request-Id", "Content-Length"],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
 };
-// apply middleware
 app.use(cors(corsOptions));
-// Ensure preflight requests are handled without throwing
+// Defensive explicit options handler — ensures the exact headers on preflight
 app.options("*", (req, res) => {
-    // if origin is allowed, cors middleware will already set AC-Allow-* headers
-    // but to be sure, call cors with same options for preflight
-    cors(corsOptions)(req, res, () => {
-        // send empty success for OPTIONS
-        res.status(204).end();
-    });
+    const origin = req.get("Origin");
+    if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, X-Requested-With, X-Idempotency-Key, X-Request-Id");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    return res.status(204).end();
 });
-app.options("*", cors(corsOptions));
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(express.json({ limit: "10mb" }));

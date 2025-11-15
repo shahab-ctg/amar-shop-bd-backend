@@ -1,10 +1,12 @@
-// src/models/Order.ts
-import { Schema, model } from "mongoose";
-const orderSchema = new Schema({
-    status: {
-        type: String,
-        enum: ["PENDING", "IN_PROGRESS", "IN_SHIPPING", "DELIVERED", "CANCELLED"],
-        default: "PENDING",
+import mongoose, { Schema } from "mongoose";
+const OrderSchema = new Schema({
+    customer: {
+        name: { type: String, required: true },
+        phone: { type: String, required: true },
+        houseOrVillage: { type: String, default: "" },
+        roadOrPostOffice: { type: String, default: "" },
+        blockOrThana: { type: String, default: "" },
+        district: { type: String, default: "" },
     },
     lines: [
         {
@@ -14,33 +16,27 @@ const orderSchema = new Schema({
                 required: true,
             },
             qty: { type: Number, required: true, min: 1 },
-            price: { type: Number, default: 0 },
-            image: String,
-            title: String,
+            title: { type: String, required: true },
+            price: { type: Number, required: true, min: 0 },
+            image: { type: String, default: "" },
         },
     ],
-    notes: { type: String, default: "" },
-    customer: {
-        name: { type: String, required: true },
-        phone: { type: String, required: true },
-        email: String,
-        address: String,
-        area: String,
-        houseOrVillage: String,
-        roadOrPostOffice: String,
-        blockOrThana: String,
-        district: String,
-    },
     totals: {
-        subTotal: { type: Number, default: 0 },
-        shipping: { type: Number, default: 0 },
-        tax: { type: Number, default: 0 },
-        discount: { type: Number, default: 0 },
-        grandTotal: { type: Number, default: 0 },
+        subTotal: { type: Number, required: true, min: 0 },
+        shipping: { type: Number, required: true, min: 0 },
+        grandTotal: { type: Number, required: true, min: 0 },
     },
-    payment: Schema.Types.Mixed,
-}, {
-    timestamps: true,
-});
-// Create and export the model
-export const Order = model("Order", orderSchema);
+    status: {
+        type: String,
+        enum: ["PENDING", "IN_PROGRESS", "IN_SHIPPING", "DELIVERED", "CANCELLED"],
+        default: "PENDING",
+    },
+    payment: {
+        method: { type: String, required: true },
+        status: { type: String, required: true },
+        transactionId: { type: String, default: "" },
+    },
+    notes: { type: String, default: "" },
+    idempotencyKey: { type: String, index: { unique: true, sparse: true } }, // Add this line properly
+}, { timestamps: true });
+export const Order = mongoose.model("Order", OrderSchema);
